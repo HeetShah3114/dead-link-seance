@@ -48,6 +48,19 @@ describe('repairV0', () => {
     expect(r.html).toContain('href="other.html"');
   });
 
+  it('switches forms off and says so', () => {
+    const r = repairV0(
+      '<form action="/post.cgi" method="post" target="_blank"><input name="q"><input type="password" name="p"><select name="s"></select><textarea name="t"></textarea><button>Go</button></form>',
+      opts,
+    );
+    expect(r.formsDisabled).toBe(1);
+    expect(r.html).not.toMatch(/action=|method=|target=/i);
+    expect(r.html).toContain('data-seance-dead-form');
+    expect(r.html).toContain('This form no longer works');
+    const disabled = (r.html.match(/disabled="disabled"/g) ?? []).length;
+    expect(disabled).toBe(5);
+  });
+
   it('counts each asset once', () => {
     const r = repairV0('<img src="a.gif"><img src="a.gif">', opts);
     expect(r.assets).toHaveLength(1);

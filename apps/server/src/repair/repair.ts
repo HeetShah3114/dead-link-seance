@@ -13,6 +13,8 @@ export interface RepairResult {
   /** Distinct asset URLs rewritten to archived copies. */
   assets: string[];
   scriptsRemoved: number;
+  /** Forms switched off because their server is gone. */
+  formsDisabled: number;
 }
 
 /** Elements dropped entirely: they run code or embed other sites. (R5.5) */
@@ -56,6 +58,18 @@ export function repairV0(html: string, opts: RepairOptions): RepairResult {
   const $ = cheerio.load(html);
   const assets = new Set<string>();
 
+  // Forms: the server behind them is gone. Show them, switch them off, and say so. (R5.7)
+  const forms = $('form');
+  const formsDisabled = forms.length;
+  forms.each((_, el) => {
+    const form = $(el);
+    form.removeAttr('action').removeAttr('method').removeAttr('target').attr('data-seance-dead-form', '');
+    form.find('input, button, select, textarea').attr('disabled', 'disabled');
+    form.prepend(
+      '<p class="seance-dead-form-note" style="all:initial;display:block;font:13px/1.4 system-ui,sans-serif;color:#5b21b6;background:#f3e8ff;border:1px dashed #8b5cf6;padding:4px 8px;margin:4px 0">This form no longer works. The server behind it is gone.</p>',
+    );
+  });
+
   const scriptsRemoved = $('script').length;
   $(DROP).remove();
 
@@ -89,5 +103,5 @@ export function repairV0(html: string, opts: RepairOptions): RepairResult {
   }).remove();
   $('head').prepend('<meta charset="utf-8">');
 
-  return { html: $.html(), assets: [...assets], scriptsRemoved };
+  return { html: $.html(), assets: [...assets], scriptsRemoved, formsDisabled };
 }

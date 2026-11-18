@@ -20,7 +20,7 @@ try {
     outRoot: 'out',
   });
   console.log(`Snapshot:  ${r.snapshotDate} (${r.beforeUrl})`);
-  console.log(`Assets:    ${r.assets} pointed at archived copies, ${r.scriptsRemoved} scripts removed`);
+  console.log(`Assets:    ${r.assets} pointed at archived copies, ${r.scriptsRemoved} scripts removed, ${r.formsDisabled} forms switched off`);
   console.log(`Written:   ${r.indexPath}`);
 } catch (e) {
   if (e instanceof PipelineError) {

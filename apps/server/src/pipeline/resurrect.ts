@@ -25,6 +25,7 @@ export interface ResurrectResult {
   beforeUrl: string;
   assets: number;
   scriptsRemoved: number;
+  formsDisabled: number;
 }
 
 export interface ResurrectDeps {
@@ -79,5 +80,6 @@ export async function resurrectV0(input: string, deps: ResurrectDeps): Promise<R
     beforeUrl: viewUrl(snap.timestamp, snap.original),
     assets: repaired.assets.length,
     scriptsRemoved: repaired.scriptsRemoved,
+    formsDisabled: repaired.formsDisabled,
   };
 }
