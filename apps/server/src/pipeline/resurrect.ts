@@ -33,6 +33,11 @@ export interface ResurrectDeps {
   cache: DiskCache;
   /** Folder that will hold one subfolder per resurrection. */
   outRoot: string;
+  /** Subfolder name. Default: slug of the URL plus the snapshot timestamp. */
+  outDirName?: string;
+  /** Progress callback, called as each step starts and when the snapshot is known. */
+  onStep?: (step: 'lookup' | 'fetch' | 'repair' | 'build', detail?: string) => void;
+  onSnapshot?: (snap: { timestamp: string; date: string; archiveUrl: string }) => void;
 }
 
 function slug(url: URL): string {
@@ -51,20 +56,29 @@ export async function resurrectV0(input: string, deps: ResurrectDeps): Promise<R
     throw new PipelineError('INVALID_URL', 'Only http and https URLs can be summoned');
   }
 
+  deps.onStep?.('lookup');
   const snap = await deps.client.findBestSnapshot(url.href);
   if (!snap) throw new PipelineError('NO_SNAPSHOT', 'No archived copy found');
+  deps.onSnapshot?.({
+    timestamp: snap.timestamp,
+    date: formatDate(snap.timestamp),
+    archiveUrl: viewUrl(snap.timestamp, snap.original),
+  });
 
+  deps.onStep?.('fetch', `Snapshot ${formatDate(snap.timestamp)}`);
   const page = await fetchRaw(deps.client, deps.cache, snap.timestamp, snap.original);
   if (page.status !== 200 || !/html/i.test(page.contentType)) {
     throw new PipelineError('UNSUPPORTED_TARGET', `Snapshot is not an HTML page (status ${page.status}, ${page.contentType})`);
   }
 
+  deps.onStep?.('repair');
   const repaired = repairV0(decodeHtml(page.contentType, page.body), {
     pageUrl: snap.original,
     timestamp: snap.timestamp,
   });
 
-  const outDir = path.join(deps.outRoot, `${slug(url)}-${snap.timestamp}`);
+  deps.onStep?.('build');
+  const outDir = path.join(deps.outRoot, deps.outDirName ?? `${slug(url)}-${snap.timestamp}`);
   const { indexPath } = await buildSiteV0({
     html: repaired.html,
     outDir,
