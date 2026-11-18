@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Dead Link Seance: private S3 bucket plus CloudFront distribution that serves
+  resurrected static sites at https://<distribution>/sites/<siteId>/.
+
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@3
+
+Parameters:
+  RetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    Description: Days before objects under sites/ expire (requirements decision 1). Pinned demo sites use pinned/.
+
+Resources:
+  SitesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Holds built static sites. Private; only CloudFront can read it.
+        must:
+          - Keep all public access blocked. Reads go through CloudFront OAC only.
+          - sites/ expires after RetentionDays. pinned/ never expires (demo sites).
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-sites
+            Status: Enabled
+            Prefix: sites/
+            ExpirationInDays: !Ref RetentionDays
+          - Id: abort-multipart
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  SitesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SitesBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt SitesBucket.Arn
+              - !Sub '${SitesBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${SitesBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}'
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-oac'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  IndexFunction:
+    Type: AWS::CloudFront::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: S3 has no directory index. Maps /sites/<id>/ to /sites/<id>/index.html.
+    Properties:
+      Name: !Sub '${AWS::StackName}-index'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Append index.html to URIs that end in a slash
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          if (request.uri.endsWith('/')) {
+            request.uri += 'index.html';
+          }
+          return request;
+        }
+
+  SecurityHeaders:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Resurrected pages must never run scripts, even if sanitizing missed something (R11.3).
+        must:
+          - Keep script-src 'none'.
+          - Do not set X-Frame-Options or frame-ancestors; the reveal screen shows sites in an iframe.
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub '${AWS::StackName}-security-headers'
+        SecurityHeadersConfig:
+          ContentSecurityPolicy:
+            Override: true
+            ContentSecurityPolicy: "script-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+          ContentTypeOptions:
+            Override: true
+          ReferrerPolicy:
+            Override: true
+            ReferrerPolicy: no-referrer
+          StrictTransportSecurity:
+            Override: true
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: false
+            Preload: false
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub '${AWS::StackName} resurrected sites'
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        IPV6Enabled: true
+        Origins:
+          - Id: sites-bucket
+            DomainName: !GetAtt SitesBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: sites-bucket
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+          ResponseHeadersPolicyId: !Ref SecurityHeaders
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt IndexFunction.FunctionMetadata.FunctionARN
+
+Outputs:
+  BucketName:
+    Value: !Ref SitesBucket
+  DistributionId:
+    Value: !Ref Distribution
+  DistributionDomain:
+    Value: !GetAtt Distribution.DomainName
