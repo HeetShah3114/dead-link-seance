@@ -13,7 +13,7 @@ Days assume ~2.5 weeks.
 
 ## Phase 1: One site, end to end, ugly is fine (Days 2 to 5)
 - [x] 1.1 [A] `wayback` client: availability + CDX lookup, pick newest 200 HTML snapshot. Hard-code User-Agent and 1 req/s queue. Test against saved fixtures. [R2, R4.1, R4.2]
-- [ ] 1.2 [A] `id_` fetch of one page, with disk cache keyed by url+timestamp. [R3.1, R4.3]
+- [x] 1.2 [A] `id_` fetch of one page, with disk cache keyed by url+timestamp. [R3.1, R4.3]
 - [ ] 1.3 [B] `repair` v0: strip scripts, rewrite asset URLs to archived `id_` URLs (no download yet). [R5.3, R5.5]
 - [ ] 1.4 [B] `build` v0: inject the banner, write `index.html` to a local folder. [R7]
 - [ ] 1.5 [A] CLI: `npm run resurrect -- <url>` writes a folder. Check by hand on one GeoCities-style page. **Milestone 1: one page resurrected locally.**
