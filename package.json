@@ -1,6 +1,7 @@
 {
   "name": "dead-link-seance",
   "private": true,
+  "type": "module",
   "version": "0.0.1",
   "license": "MIT",
   "workspaces": ["apps/*", "packages/*"],
@@ -8,7 +9,7 @@
     "dev": "npm run dev -w @seance/server",
     "build": "npm run build -ws --if-present",
     "test": "vitest run",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint .",
     "typecheck": "tsc -b"
   },
   "devDependencies": {
