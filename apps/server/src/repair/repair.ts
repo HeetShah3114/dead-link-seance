@@ -82,5 +82,12 @@ export function repairV0(html: string, opts: RepairOptions): RepairResult {
     });
   }
 
+  // Output is always written as UTF-8, so say so.
+  $('meta[charset], meta[http-equiv]').filter((_, el) => {
+    const m = $(el);
+    return m.attr('charset') !== undefined || /content-type/i.test(m.attr('http-equiv') ?? '');
+  }).remove();
+  $('head').prepend('<meta charset="utf-8">');
+
   return { html: $.html(), assets: [...assets], scriptsRemoved };
 }
