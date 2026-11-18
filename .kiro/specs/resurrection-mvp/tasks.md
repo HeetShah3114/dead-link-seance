@@ -5,14 +5,14 @@ Each task ends with something runnable. `[A]` / `[B]` = suggested owner (2 peopl
 Days assume ~2.5 weeks.
 
 ## Phase 0: Setup (Day 1)
-- [ ] 0.1 [A] Create GitHub repo, MIT license, README stub, `.gitignore` that does NOT list `.kiro`. [R12.1, R12.3]
+- [x] 0.1 [A] Create GitHub repo, MIT license, README stub, `.gitignore` that does NOT list `.kiro`. [R12.1, R12.3]
 - [ ] 0.2 [A] Scaffold TypeScript monorepo: `apps/server`, `apps/web`, `packages/shared` (API types). Add lint, Vitest, `fast-check`. [design 1]
-- [ ] 0.3 [B] Write hooks in `.kiro/hooks/`: on save run lint + related tests; on `requirements.md` change remind to update tasks; pre-commit check `.kiro` not ignored. [R12.4]
-- [ ] 0.4 [B] Update `tech.md` with the approved stack. Start `docs/kiro-writeup.md`. [R12.7]
-- [ ] 0.5 [A] Add a `/health` route and a one-command local run (`npm run dev`). Verify.
+- [x] 0.3 [B] Write hooks in `.kiro/hooks/`: on save run lint + related tests; on `requirements.md` change remind to update tasks; pre-commit check `.kiro` not ignored. [R12.4]
+- [x] 0.4 [B] Update `tech.md` with the approved stack. Start `docs/kiro-writeup.md`. [R12.7]
+- [x] 0.5 [A] Add a `/health` route and a one-command local run (`npm run dev`). Verify.
 
 ## Phase 1: One site, end to end, ugly is fine (Days 2 to 5)
-- [ ] 1.1 [A] `wayback` client: availability + CDX lookup, pick newest 200 HTML snapshot. Hard-code User-Agent and 1 req/s queue. Test against saved fixtures. [R2, R4.1, R4.2]
+- [x] 1.1 [A] `wayback` client: availability + CDX lookup, pick newest 200 HTML snapshot. Hard-code User-Agent and 1 req/s queue. Test against saved fixtures. [R2, R4.1, R4.2]
 - [ ] 1.2 [A] `id_` fetch of one page, with disk cache keyed by url+timestamp. [R3.1, R4.3]
 - [ ] 1.3 [B] `repair` v0: strip scripts, rewrite asset URLs to archived `id_` URLs (no download yet). [R5.3, R5.5]
 - [ ] 1.4 [B] `build` v0: inject the banner, write `index.html` to a local folder. [R7]
