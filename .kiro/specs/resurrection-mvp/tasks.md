@@ -6,7 +6,7 @@ Days assume ~2.5 weeks.
 
 ## Phase 0: Setup (Day 1)
 - [x] 0.1 [A] Create GitHub repo, MIT license, README stub, `.gitignore` that does NOT list `.kiro`. [R12.1, R12.3]
-- [ ] 0.2 [A] Scaffold TypeScript monorepo: `apps/server`, `apps/web`, `packages/shared` (API types). Add lint, Vitest, `fast-check`. [design 1]
+- [x] 0.2 [A] Scaffold TypeScript monorepo: `apps/server`, `apps/web`, `packages/shared` (API types). Add lint, Vitest, `fast-check`. [design 1]
 - [x] 0.3 [B] Write hooks in `.kiro/hooks/`: on save run lint + related tests; on `requirements.md` change remind to update tasks; pre-commit check `.kiro` not ignored. [R12.4]
 - [x] 0.4 [B] Update `tech.md` with the approved stack. Start `docs/kiro-writeup.md`. [R12.7]
 - [x] 0.5 [A] Add a `/health` route and a one-command local run (`npm run dev`). Verify.
