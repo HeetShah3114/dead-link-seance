@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Lint and test on save",
+  "description": "When a source file is saved, lint it and run the tests next to it.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["apps/**/src/**/*.ts", "apps/**/src/**/*.tsx", "packages/**/src/**/*.ts"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file was saved. Run eslint on it and run the Vitest tests for that file or its neighbours (npx vitest run <path>). Report only failures, briefly. Do not change unrelated files."
+  }
+}

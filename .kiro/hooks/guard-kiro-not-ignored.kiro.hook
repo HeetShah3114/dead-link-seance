@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Guard: .kiro must not be ignored",
+  "description": "When .gitignore changes, make sure .kiro is not ignored (hackathon rule).",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [".gitignore"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check .gitignore. If any line ignores .kiro or a folder inside it, remove that line and tell me. Confirm with: git check-ignore -v .kiro/steering/product.md (it must print nothing)."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Keep tasks in sync with spec",
+  "description": "When requirements or design change, check that tasks.md still matches.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [".kiro/specs/**/requirements.md", ".kiro/specs/**/design.md"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A spec file changed. Compare it with .kiro/specs/resurrection-mvp/tasks.md. List any task that is now missing, wrong or out of order, and propose the exact edits. Do not edit without asking."
+  }
+}

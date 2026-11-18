@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+data/
+out/
+.DS_Store
+# NOTE: never ignore .kiro/ (hackathon rule: it can disqualify the entry)
