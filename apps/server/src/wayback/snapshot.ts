@@ -7,11 +7,13 @@ export interface Snapshot {
   original: string;
   mimetype: string;
   statuscode: string;
+  /** Stored size in bytes, when the archive reports it. Used to prefer fuller pages. */
+  length?: number;
 }
 
 const CDX_FIELDS = ['timestamp', 'original', 'mimetype', 'statuscode'] as const;
 
-export const CDX_FL = CDX_FIELDS.join(',');
+export const CDX_FL = [...CDX_FIELDS, 'length'].join(',');
 
 /** Parse CDX `output=json` (first row is the header). Skips malformed rows. */
 export function parseCdx(body: unknown): Snapshot[] {
@@ -20,6 +22,7 @@ export function parseCdx(body: unknown): Snapshot[] {
   if (!Array.isArray(header)) return [];
   const idx = CDX_FIELDS.map((f) => header.indexOf(f));
   if (idx.some((i) => i < 0)) return [];
+  const lengthIdx = header.indexOf('length');
   const out: Snapshot[] = [];
   for (const row of body.slice(1)) {
     if (!Array.isArray(row)) continue;
@@ -31,19 +34,30 @@ export function parseCdx(body: unknown): Snapshot[] {
       typeof mimetype === 'string' &&
       typeof statuscode === 'string'
     ) {
-      out.push({ timestamp, original, mimetype, statuscode });
+      const len = lengthIdx >= 0 ? Number(row[lengthIdx]) : NaN;
+      out.push(Number.isFinite(len) && len > 0 ? { timestamp, original, mimetype, statuscode, length: len } : { timestamp, original, mimetype, statuscode });
     }
   }
   return out;
 }
 
-/** Newest snapshot with HTTP 200 and an HTML mime type, else null. (R2.2) */
+/** Candidates at least this fraction of the biggest page count as "full". */
+export const FULLNESS = 0.6;
+
+/**
+ * Pick the best snapshot (R2.2): among HTTP 200 HTML copies, keep the "full" ones
+ * (size >= FULLNESS of the largest, when sizes are known), then take the newest of those.
+ * This avoids picking a late "site is closed" or parked-domain page over the real site.
+ */
 export function pickBest(snapshots: Snapshot[]): Snapshot | null {
   const ok = snapshots.filter(
     (s) => s.statuscode === '200' && /^text\/html\b|^application\/xhtml\+xml\b/i.test(s.mimetype),
   );
   if (ok.length === 0) return null;
-  return ok.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
+  const sizes = ok.map((s) => s.length ?? 0);
+  const biggest = Math.max(...sizes);
+  const full = biggest > 0 ? ok.filter((s) => (s.length ?? 0) >= biggest * FULLNESS) : ok;
+  return full.reduce((a, b) => (b.timestamp > a.timestamp ? b : a));
 }
 
 /** Raw original HTML, no toolbar, no rewritten links. (R3.1) */

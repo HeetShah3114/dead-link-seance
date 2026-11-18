@@ -41,6 +41,24 @@ describe('pickBest', () => {
     expect(pickBest([s('20050101000000', '404'), s('20060101000000', '200', 'image/gif')])).toBeNull();
   });
 
+  it('prefers a full page over a newer, much smaller "site closed" page', () => {
+    const real = { ...s('20010101000000'), length: 9000 };
+    const closed = { ...s('20010516000000'), length: 600 };
+    expect(pickBest([real, closed])?.timestamp).toBe('20010101000000');
+  });
+
+  it('takes the newest among full pages', () => {
+    const a = { ...s('20000101000000'), length: 9000 };
+    const b = { ...s('20020101000000'), length: 8000 };
+    const small = { ...s('20030101000000'), length: 500 };
+    expect(pickBest([a, b, small])?.timestamp).toBe('20020101000000');
+  });
+
+  it('parses the length column when present', () => {
+    const rows = parseCdx([[...header, 'length'], ['20030412101500', 'http://a.com/', 'text/html', '200', '1234']]);
+    expect(rows[0]?.length).toBe(1234);
+  });
+
   it('returns null for empty input', () => {
     expect(pickBest([])).toBeNull();
   });

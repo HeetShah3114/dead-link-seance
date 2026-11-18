@@ -98,7 +98,7 @@ export class WaybackClient {
     const cdx =
       'https://web.archive.org/cdx/search/cdx?output=json' +
       `&fl=${CDX_FL}` +
-      '&filter=statuscode:200&filter=mimetype:text/html&limit=-10' +
+      '&filter=statuscode:200&filter=mimetype:text/html&limit=-100&collapse=digest' +
       `&url=${encodeURIComponent(url)}`;
     const res = await this.get(cdx);
     if (res.ok) {

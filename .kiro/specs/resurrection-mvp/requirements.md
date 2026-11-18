@@ -15,6 +15,7 @@ As a visitor, I want the best available archived copy used.
 2. THE SYSTEM SHALL prefer the newest snapshot with HTTP 200 and an HTML mime type.
 3. IF no 200 snapshot exists, THEN THE SYSTEM SHALL fall back to the newest redirect-resolved snapshot, else fail with "no snapshot found".
 4. THE SYSTEM SHALL record the chosen snapshot timestamp and its archive URL on the job.
+5. THE SYSTEM SHALL prefer a full copy of the site over a newer, much smaller one (such as a "site closed" or parked-domain page): among 200 HTML snapshots, keep those at least 60% as large as the largest, then take the newest.
 
 ## R3. Fetch the remains
 As a visitor, I want the original pages, not the archive's rewritten ones.
@@ -38,7 +39,8 @@ As a visitor, I want the site to work as a site.
 3. THE SYSTEM SHALL point images, CSS and other assets at archived copies (id_ form for the same timestamp) where they exist, and download them into the output where the file size is within a limit.
 4. WHERE an asset is missing, THE SYSTEM SHALL insert a visible placeholder and list the asset in the report.
 5. THE SYSTEM SHALL strip scripts, trackers, ad embeds and third-party iframes from the output.
-6. THE SYSTEM SHALL produce a report with counts: pages found, pages recovered, assets found, assets recovered, items AI-restored.
+6. THE SYSTEM SHALL produce a report with counts: pages found, pages recovered, assets found, assets recovered, items AI-restored, forms disabled.
+7. THE SYSTEM SHALL switch off every form (no action, all fields disabled) and show a visible note that the form no longer works, because the archive saves pages, not the servers behind them.
 
 ## R6. AI gap-filling, never silent
 As a visitor, I want holes filled honestly.
