@@ -15,7 +15,7 @@ Days assume ~2.5 weeks.
 - [x] 1.1 [A] `wayback` client: availability + CDX lookup, pick newest 200 HTML snapshot. Hard-code User-Agent and 1 req/s queue. Test against saved fixtures. [R2, R4.1, R4.2]
 - [x] 1.2 [A] `id_` fetch of one page, with disk cache keyed by url+timestamp. [R3.1, R4.3]
 - [x] 1.3 [B] `repair` v0: strip scripts, rewrite asset URLs to archived `id_` URLs (no download yet). [R5.3, R5.5]
-- [ ] 1.4 [B] `build` v0: inject the banner, write `index.html` to a local folder. [R7]
+- [x] 1.4 [B] `build` v0: inject the banner, write `index.html` to a local folder. [R7]
 - [ ] 1.5 [A] CLI: `npm run resurrect -- <url>` writes a folder. Check by hand on one GeoCities-style page. **Milestone 1: one page resurrected locally.**
 - [ ] 1.6 [A] Jobs table + `POST /api/summons` and `GET /api/summons/:id` (steps and result, no AI yet). Serve the output folder locally. [R1, API]
 - [ ] 1.7 [B] Web v0: input box, progress list from polling, link to result. Plain styling. [R9.1, R9.2]
