@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { JobView, SummonRequest, SummonResponse } from '@seance/shared';
+import { mimeFor } from './mime.js';
 import { apiError } from './jobs/errors.js';
 import type { JobRunner } from './jobs/runner.js';
 import type { JobRow, JobStore } from './jobs/store.js';
@@ -25,18 +26,6 @@ export function toView(j: JobRow): JobView {
     error: j.error,
   };
 }
-
-const MIME: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.htm': 'text/html; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.txt': 'text/plain; charset=utf-8',
-  '.gif': 'image/gif',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.ico': 'image/x-icon',
-};
 
 function validUrl(v: unknown): v is string {
   if (typeof v !== 'string' || v.length === 0 || v.length > 2048) return false;
@@ -82,7 +71,7 @@ export function registerRoutes(app: FastifyInstance, ctx: RouteContext): void {
       if ((await stat(file)).isDirectory()) file = path.join(file, 'index.html');
       const data = await readFile(file);
       return reply
-        .header('content-type', MIME[path.extname(file).toLowerCase()] ?? 'application/octet-stream')
+        .header('content-type', mimeFor(file))
         // Resurrected pages must never run scripts. (R11.3)
         .header('content-security-policy', "script-src 'none'; frame-ancestors *")
         .header('x-content-type-options', 'nosniff')

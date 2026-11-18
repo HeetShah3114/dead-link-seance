@@ -6,6 +6,7 @@ import type { JobView } from '@seance/shared';
 import { buildApp } from './index.js';
 import { DiskCache } from './wayback/cache.js';
 import { WaybackError } from './wayback/client.js';
+import { DeployError, type Deployer } from './deploy/s3.js';
 import type { Snapshot } from './wayback/snapshot.js';
 
 let dir: string;
@@ -19,10 +20,11 @@ afterEach(async () => {
 const snap: Snapshot = { timestamp: '20030412101500', original: 'http://a.com/', mimetype: 'text/html', statuscode: '200' };
 const page = '<html><body><h1>Welcome</h1><script>x()</script><img src="p.gif"></body></html>';
 
-function make(find: () => Promise<Snapshot | null>) {
+function make(find: () => Promise<Snapshot | null>, deployer?: Deployer) {
   return buildApp({
     dbFile: ':memory:',
     logger: false,
+    ...(deployer ? { deployer } : {}),
     pipeline: {
       client: {
         findBestSnapshot: find,
@@ -124,5 +126,40 @@ describe('GET /sites/*', () => {
     expect((await app.inject({ method: 'GET', url: '/sites/abcdefabcdef/' })).statusCode).toBe(404);
     expect((await app.inject({ method: 'GET', url: '/sites/abcdefabcdef/..%2F..%2Fsecret' })).statusCode).toBe(404);
     expect((await app.inject({ method: 'GET', url: '/sites/..%2F/index.html' })).statusCode).toBe(404);
+  });
+});
+
+describe('deploy step', () => {
+  it('uses the deployer URL and marks the deploy step Published', async () => {
+    const calls: Array<{ siteId: string; dir: string }> = [];
+    const deployer: Deployer = {
+      deploy: async (siteId, dir) => {
+        calls.push({ siteId, dir });
+        return { url: `https://d1.cloudfront.net/sites/${siteId}/` };
+      },
+    };
+    const { app, runner } = make(async () => snap, deployer);
+    const { jobId } = (await summon(app, 'http://a.com/')).json();
+    await runner.idle();
+    const view = (await app.inject({ method: 'GET', url: `/api/summons/${jobId}` })).json() as JobView;
+    expect(view.status).toBe('done');
+    expect(view.result?.siteUrl).toBe(`https://d1.cloudfront.net/sites/${calls[0]!.siteId}/`);
+    expect(view.steps.find((s) => s.name === 'deploy')).toMatchObject({ state: 'done', detail: 'Published' });
+  });
+
+  it('reports DEPLOY_FAILED without leaking upload details', async () => {
+    const deployer: Deployer = {
+      deploy: async () => {
+        throw new DeployError('AccessDenied: arn:aws:iam::123:role/secret');
+      },
+    };
+    const { app, runner } = make(async () => snap, deployer);
+    const { jobId } = (await summon(app, 'http://a.com/')).json();
+    await runner.idle();
+    const view = (await app.inject({ method: 'GET', url: `/api/summons/${jobId}` })).json() as JobView;
+    expect(view.status).toBe('failed');
+    expect(view.error?.code).toBe('DEPLOY_FAILED');
+    expect(view.steps.find((s) => s.name === 'deploy')?.state).toBe('failed');
+    expect(JSON.stringify(view)).not.toContain('arn:aws');
   });
 });

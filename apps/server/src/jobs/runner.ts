@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { StepInfo, StepName } from '@seance/shared';
 import { resurrectV0, type ResurrectDeps } from '../pipeline/resurrect.js';
+import type { Deployer } from '../deploy/s3.js';
 import { toApiError } from './errors.js';
 import { JobStore } from './store.js';
 
@@ -8,8 +9,10 @@ export interface RunnerOptions {
   store: JobStore;
   /** Wayback client, cache and output root. Step callbacks are added by the runner. */
   pipeline: Pick<ResurrectDeps, 'client' | 'cache' | 'outRoot'>;
-  /** Prefix for site URLs, e.g. "" (same origin) or "https://sites.example.app". */
+  /** Prefix for site URLs when served locally, e.g. "" (same origin). Ignored when a deployer is set. */
   publicBase?: string;
+  /** Publishes the built site (S3 + CloudFront). When absent, sites are served from this server. */
+  deployer?: Deployer;
   log?: (msg: string, extra?: Record<string, unknown>) => void;
 }
 
@@ -50,13 +53,20 @@ export class JobRunner {
         onStep: (step, detail) => this.setStep(jobId, step, detail),
         onSnapshot: (snapshot) => store.update(jobId, { snapshot }),
       });
+      let siteUrl = `${publicBase}/sites/${siteId}/`;
+      let deployDetail = 'Served from this server';
+      if (this.o.deployer) {
+        this.setStep(jobId, 'deploy');
+        siteUrl = (await this.o.deployer.deploy(siteId, r.outDir)).url;
+        deployDetail = 'Published';
+      }
       const done = store.get(jobId)!;
-      // aifill and deploy are not built yet (tasks 3.x and 1.8): mark them honestly.
+      // aifill is not built yet (tasks 3.x): mark it honestly.
       const steps: StepInfo[] = done.steps.map((s) =>
         s.name === 'aifill'
           ? { name: s.name, state: 'done', detail: 'Skipped (not built yet)' }
           : s.name === 'deploy'
-            ? { name: s.name, state: 'done', detail: 'Served from this server' }
+            ? { name: s.name, state: 'done', detail: deployDetail }
             : { ...s, state: 'done' },
       );
       store.update(jobId, {
@@ -65,7 +75,7 @@ export class JobRunner {
         steps,
         siteId,
         result: {
-          siteUrl: `${publicBase}/sites/${siteId}/`,
+          siteUrl,
           beforeUrl: r.beforeUrl,
           downloadUrl: '', // zip download arrives with task 4.6
           lostNote: '', // "what was lost" note arrives with task 3.5

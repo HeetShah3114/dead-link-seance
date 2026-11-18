@@ -10,6 +10,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1171.0",
+    "@aws-sdk/credential-providers": "^3.1171.0",
     "@seance/shared": "*",
     "better-sqlite3": "^13.2.0",
     "cheerio": "^1.2.0",

@@ -1,6 +1,7 @@
 import type { ApiError, ErrorCode } from '@seance/shared';
 import { WaybackError } from '../wayback/client.js';
 import { PipelineError } from '../pipeline/resurrect.js';
+import { DeployError } from '../deploy/s3.js';
 
 const TEXT: Record<ErrorCode, { message: string; spooky: string }> = {
   INVALID_URL: { message: 'That is not a valid http or https address.', spooky: 'The spirits cannot read that address.' },
@@ -31,5 +32,6 @@ export function apiError(code: ErrorCode): ApiError {
 export function toApiError(e: unknown): ApiError {
   if (e instanceof PipelineError) return apiError(e.code);
   if (e instanceof WaybackError) return apiError(e.code);
+  if (e instanceof DeployError) return apiError('DEPLOY_FAILED');
   return apiError('INTERNAL');
 }
