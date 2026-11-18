@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "resurrect": "tsx src/cli.ts",
     "build": "tsc -p .",
     "start": "node dist/index.js"
   },

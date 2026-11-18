@@ -16,7 +16,7 @@ Days assume ~2.5 weeks.
 - [x] 1.2 [A] `id_` fetch of one page, with disk cache keyed by url+timestamp. [R3.1, R4.3]
 - [x] 1.3 [B] `repair` v0: strip scripts, rewrite asset URLs to archived `id_` URLs (no download yet). [R5.3, R5.5]
 - [x] 1.4 [B] `build` v0: inject the banner, write `index.html` to a local folder. [R7]
-- [ ] 1.5 [A] CLI: `npm run resurrect -- <url>` writes a folder. Check by hand on one GeoCities-style page. **Milestone 1: one page resurrected locally.**
+- [x] 1.5 [A] CLI: `npm run resurrect -- <url>` writes a folder. Check by hand on one GeoCities-style page. **Milestone 1: one page resurrected locally.**
 - [ ] 1.6 [A] Jobs table + `POST /api/summons` and `GET /api/summons/:id` (steps and result, no AI yet). Serve the output folder locally. [R1, API]
 - [ ] 1.7 [B] Web v0: input box, progress list from polling, link to result. Plain styling. [R9.1, R9.2]
 - [ ] 1.8 [A] `deploy` v0: upload folder to S3 + CloudFront, return URL. [R8.1, R8.2]
