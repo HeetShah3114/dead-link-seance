@@ -48,8 +48,12 @@ export interface Report {
   assetsRecovered: number;
   aiRestoredItems: number;
   aiSkipped: boolean;
+  /** Forms switched off because their server is gone. (R5.7) */
+  formsDisabled: number;
   lostPages: string[];
   lostAssets: string[];
+  /** True when an earlier build of the same url + snapshot was reused. (R8.3) */
+  reused?: boolean;
 }
 
 export interface JobResult {

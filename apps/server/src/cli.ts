@@ -1,7 +1,8 @@
 // Usage: npm run resurrect -- http://example.com/
 import { WaybackClient } from './wayback/client.js';
 import { DiskCache } from './wayback/cache.js';
-import { resurrectV0, PipelineError } from './pipeline/resurrect.js';
+import { resurrect, PipelineError } from './pipeline/resurrect.js';
+import { loadLimits } from './config.js';
 
 const url = process.argv[2];
 if (!url) {
@@ -14,17 +15,22 @@ const client = new WaybackClient({
 });
 
 try {
-  const r = await resurrectV0(url, {
+  const r = await resurrect(url, {
     client,
     cache: new DiskCache('data/cache'),
     outRoot: 'out',
+    limits: loadLimits(),
+    onStep: (step, detail) => process.stderr.write(`\r${step}${detail ? `: ${detail}` : ''}`.padEnd(90)),
   });
+  process.stderr.write('\n');
   console.log(`Snapshot:  ${r.snapshotDate} (${r.beforeUrl})`);
-  console.log(`Assets:    ${r.assets} pointed at archived copies, ${r.scriptsRemoved} scripts removed, ${r.formsDisabled} forms switched off`);
-  console.log(`Written:   ${r.indexPath}`);
+  console.log(`Pages:     ${r.pagesRecovered} of ${r.pagesFound} recovered, ${r.lostPages.length} lost links marked`);
+  console.log(`Assets:    ${r.assetsRecovered} of ${r.assetsFound} downloaded, ${r.lostAssets.length} lost`);
+  console.log(`Cleaned:   ${r.scriptsRemoved} scripts removed, ${r.formsDisabled} forms switched off`);
+  console.log(`Written:   ${r.indexPath} (${Math.round(r.bytes / 1024)} KB)`);
 } catch (e) {
   if (e instanceof PipelineError) {
-    console.error(`${e.code}: ${e.message}`);
+    console.error(`\n${e.code}: ${e.message}`);
     process.exit(1);
   }
   throw e;

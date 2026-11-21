@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import * as cheerio from 'cheerio';
 import { injectBanner, BANNER_ID } from './banner.js';
-import { buildSiteV0 } from './build.js';
+import { buildSite } from './build.js';
 
 const opts = { pageUrl: 'http://a.com/old/', timestamp: '20030412101500' };
 
@@ -41,7 +41,7 @@ describe('injectBanner', () => {
   });
 });
 
-describe('buildSiteV0', () => {
+describe('buildSite', () => {
   let dir: string;
   beforeEach(async () => {
     dir = await mkdtemp(path.join(os.tmpdir(), 'seance-build-'));
@@ -50,11 +50,31 @@ describe('buildSiteV0', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('writes index.html with the banner', async () => {
-    const { indexPath } = await buildSiteV0({ ...opts, html: '<body><h1>Welcome</h1></body>', outDir: path.join(dir, 'site') });
+  it('writes every page sanitized with its own banner, plus assets', async () => {
+    const out = path.join(dir, 'site');
+    const { indexPath } = await buildSite({
+      outDir: out,
+      timestamp: opts.timestamp,
+      pages: [
+        { path: 'index.html', html: '<body><h1>Welcome</h1><img src="x" onerror="alert(1)"></body>', pageUrl: 'http://a.com/old/' },
+        { path: 'p/b.html', html: '<body><p>B</p></body>', pageUrl: 'http://a.com/old/b.html' },
+      ],
+      assets: [{ path: 'a/1.gif', body: Buffer.from('GIF89a') }],
+    });
     expect(path.basename(indexPath)).toBe('index.html');
-    const written = await readFile(indexPath, 'utf8');
-    expect(written).toContain('Welcome');
-    expect(written).toContain(BANNER_ID);
+    const home = await readFile(indexPath, 'utf8');
+    expect(home).toContain('Welcome');
+    expect(home).toContain(BANNER_ID);
+    expect(home).not.toContain('onerror');
+    const b = await readFile(path.join(out, 'p', 'b.html'), 'utf8');
+    // R7.4: each page credits its own snapshot
+    expect(b).toContain('https://web.archive.org/web/20030412101500/http://a.com/old/b.html');
+    expect((await readFile(path.join(out, 'a', '1.gif'))).toString()).toBe('GIF89a');
+  });
+
+  it('refuses to write outside the site folder', async () => {
+    await expect(
+      buildSite({ outDir: path.join(dir, 'site'), timestamp: opts.timestamp, pages: [{ path: '../evil.html', html: 'x', pageUrl: 'http://a.com/' }], assets: [] }),
+    ).rejects.toThrow(/outside the site/);
   });
 });
