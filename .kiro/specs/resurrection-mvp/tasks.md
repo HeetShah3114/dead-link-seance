@@ -19,8 +19,8 @@ Days assume ~2.5 weeks.
 - [x] 1.5 [A] CLI: `npm run resurrect -- <url>` writes a folder. Check by hand on one GeoCities-style page. **Milestone 1: one page resurrected locally.**
 - [x] 1.6 [A] Jobs table + `POST /api/summons` and `GET /api/summons/:id` (steps and result, no AI yet). Serve the output folder locally. [R1, API]
 - [x] 1.7 [B] Web v0: input box, progress list from polling, link to result. Plain styling. [R9.1, R9.2]
-- [ ] 1.8 [A] `deploy` v0: upload folder to S3 + CloudFront, return URL. [R8.1, R8.2] SWITCHED to Cloudflare R2 + Worker (CloudFront blocked by AWS account verification). DONE: R2 bucket + 30-day expiry, Worker live at dead-link-seance-sites.whoisheet.workers.dev serving from R2. LEFT: app upload to R2 needs R2 keys in apps/server/.env, then an end-to-end run.
-- [ ] 1.9 [A+B] Run the full flow on the live URL for one site. **Milestone 2: shareable link from the browser.**
+- [x] 1.8 [A] `deploy` v0: upload folder to R2, served by a Cloudflare Worker, return URL. [R8.1, R8.2] (Switched from S3 + CloudFront: CloudFront needs AWS account verification.)
+- [x] 1.9 [A+B] Run the full flow on the live URL for one site. **Milestone 2: shareable link from the browser.**
 
 ## Phase 2: Real pipeline (Days 6 to 9)
 - [ ] 2.1 [A] `crawler`: same-host crawl to MAX_PAGES/MAX_DEPTH, skip login/payment pages, record skipped. [R3.2 to R3.5]
