@@ -20,7 +20,7 @@ As a visitor, I want the best available archived copy used.
 ## R3. Fetch the remains
 As a visitor, I want the original pages, not the archive's rewritten ones.
 1. THE SYSTEM SHALL fetch HTML using the `id_` URL form so no toolbar or rewritten links are returned.
-2. THE SYSTEM SHALL also fetch same-host pages linked from the start page, up to configured MAX_PAGES and MAX_DEPTH (defaults: 15 pages, depth 2).
+2. THE SYSTEM SHALL also fetch same-site pages linked from the start page, up to configured MAX_PAGES and MAX_DEPTH (defaults: 15 pages, depth 2). "Same site" means the same host AND under the start page's folder, because on shared hosts (GeoCities, Angelfire, Tripod) other folders are other people's sites; links there are treated as off-site.
 3. THE SYSTEM SHALL fetch each page at the snapshot closest to the chosen timestamp.
 4. THE SYSTEM SHALL skip off-site links, and skip pages that look like login or payment flows (form with password field, URL paths like login, checkout, cart, pay).
 5. THE SYSTEM SHALL record every skipped or failed page and the reason.

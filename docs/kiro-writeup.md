@@ -25,3 +25,10 @@ Running notes. Update at the end of each work day. Turned into the final write-u
 
 ## Log
 - Day 0: scaffold, hooks, steering, spec.
+- Phase 2 (real pipeline): crawler, full repair, allow-list sanitizer, limits, reuse, golden test.
+  - The golden test caught a real bug on first run: on GeoCities, "same host" pulled in other people's
+    pages (`/~stacy/login.html`). Fixed by scoping a site to the start page's folder; spec R3.2 updated.
+  - Property tests (fast-check): link rewriter never leaves a live off-site or archive-rewritten link and
+    is idempotent; sanitizer never lets a script, handler or javascript: URL through; URL guard rejects every
+    private IPv4 spelling.
+  - Real run: geocities.com/Hollywood/Hills/2000/ (2001 snapshot) -> 2 of 4 pages, 8 of 17 images, 41 s.

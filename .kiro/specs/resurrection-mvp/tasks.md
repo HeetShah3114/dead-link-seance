@@ -23,15 +23,15 @@ Days assume ~2.5 weeks.
 - [x] 1.9 [A+B] Run the full flow on the live URL for one site. **Milestone 2: shareable link from the browser.**
 
 ## Phase 2: Real pipeline (Days 6 to 9)
-- [ ] 2.1 [A] `crawler`: same-host crawl to MAX_PAGES/MAX_DEPTH, skip login/payment pages, record skipped. [R3.2 to R3.5]
-- [ ] 2.2 [B] `repair` full: rewrite internal links, lost-page markers, download assets under size limit, placeholders, report counts. [R5]
-- [ ] 2.3 [B] Property tests: link rewriter never leaves off-site or archive-rewritten links, and is idempotent. [R12.8]
-- [ ] 2.4 [A] `sanitize` module (allow-list) plus property test: no script, no `on*`, no `javascript:` for any input. [R11.3, R12.8]
+- [x] 2.1 [A] `crawler`: same-site crawl to MAX_PAGES/MAX_DEPTH, skip login/payment pages, record skipped. [R3.2 to R3.5] (Site = start page's folder, so shared hosts stay one site.)
+- [x] 2.2 [B] `repair` full: rewrite internal links, lost-page markers, download assets under size limit, placeholders, report counts. [R5]
+- [x] 2.3 [B] Property tests: link rewriter never leaves off-site or archive-rewritten links, and is idempotent. [R12.8]
+- [x] 2.4 [A] `sanitize` module (allow-list) plus property test: no script, no `on*`, no `javascript:` for any input. [R11.3, R12.8]
 - [x] 2.5 [A] `url-guard` (SSRF, DNS check, redirect re-check) plus property test. [R1.2, R11.2]
-- [ ] 2.6 [A] Backoff on 429/5xx, timeouts, error codes mapped to the API error shape. [R4.4, R10]
-- [ ] 2.7 [B] Per-IP limit, one active job, size caps. [R1.4, R11.1, design 7]
-- [ ] 2.8 [B] Reuse existing deployment for same url+snapshot. [R8.3]
-- [ ] 2.9 Golden test: one saved snapshot through the whole pipeline offline. [design 8]
+- [x] 2.6 [A] Backoff on 429/5xx, timeouts, error codes mapped to the API error shape. [R4.4, R10] (Done in 1.1 and 1.6; asset step now degrades to archived links on rate limit instead of failing.)
+- [x] 2.7 [B] Per-IP limit, one active job, size caps. [R1.4, R11.1, design 7]
+- [x] 2.8 [B] Reuse existing deployment for same url+snapshot. [R8.3]
+- [x] 2.9 Golden test: one saved snapshot through the whole pipeline offline. [design 8]
 
 ## Phase 3: AI gap-filling (Days 9 to 12)
 - [ ] 3.1 [A] `llm` module over Bedrock (swappable), size caps, timeout. [R6.6]
