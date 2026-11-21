@@ -1,0 +1,15 @@
+{
+  "name": "@seance/sites-worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "cf deploy",
+    "deploy:check": "cf deploy --dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-805ec1ff3",
+    "cf": "0.15.0",
+    "vite": "^8.0.0"
+  }
+}

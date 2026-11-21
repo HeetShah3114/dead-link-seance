@@ -10,3 +10,6 @@ out/
 .DS_Store
 # NOTE: never ignore .kiro/ (hackathon rule: it can disqualify the entry)
 *.tsbuildinfo
+.cloudflare/
+.wrangler/
+.dev.vars*
