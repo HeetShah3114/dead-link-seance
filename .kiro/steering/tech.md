@@ -5,8 +5,9 @@ inclusion: always
 
 Stack: TypeScript, Node 20+, Fastify, React + Vite, SQLite (better-sqlite3), p-queue,
 parse5/cheerio, sanitize-html, Amazon Bedrock (Claude) behind one `llm` module,
-S3 + CloudFront for output sites, one container for the app. Tests: Vitest + fast-check.
-Layout: `apps/server`, `apps/web`, `packages/shared`. Full reasoning: `specs/resurrection-mvp/design.md`.
+Cloudflare R2 + a Worker (`apps/sites-worker`) for output sites, one container for the app. Tests: Vitest + fast-check.
+Runtime: Node 26. Cloudflare CLI: `cf` (not Wrangler) for R2 and the Worker.
+Layout: `apps/server`, `apps/web`, `apps/sites-worker`, `packages/shared`. Full reasoning: `specs/resurrection-mvp/design.md`.
 
 Principles, fixed now:
 - Simple and fast to deploy. Fewest moving parts that work for 2 people in 2.5 weeks.

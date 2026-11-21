@@ -14,7 +14,7 @@ Covers requirements R1 to R12 in `requirements.md`.
 | State + cache | SQLite (`better-sqlite3`) on a disk volume | No separate database. Survives restarts. |
 | Wayback client | Own module over `fetch` | Owns User-Agent, rate limit, retry, cache (R4). |
 | LLM | Amazon Bedrock (Claude), via one `llm` module | Hosted, so the live URL works when our laptops are off. Swappable. |
-| Output storage + deploy | S3 bucket + CloudFront, one folder per site | "Deploy" is an upload. No build step per site. |
+| Output storage + deploy | Cloudflare R2 bucket + one Worker (`apps/sites-worker`), one folder per site | "Deploy" is an upload over R2's S3 API. No build step per site. Free egress. See section 11. |
 | App hosting | One container on Fly.io or AWS App Runner | One deploy for API and UI. |
 | Tests | Vitest + `fast-check` (property tests) | Meets R12.8. |
 
@@ -35,8 +35,8 @@ Browser (React) --POST /api/summons--> Fastify API --> job row (SQLite)
         |                      1 lookup -> 2 fetch -> 3 repair
         |                      -> 4 ai-fill -> 5 build -> 6 deploy
         |                          |                       |
-        |                    Wayback queue          S3 + CloudFront
-        |                  (cache, 1 req/s)         sites.<domain>/<id>/
+        |                    Wayback queue          R2 bucket <- sites Worker
+        |                  (cache, 1 req/s)         <worker>.workers.dev/sites/<id>/
         +---- reveal: iframe(archive snapshot) | iframe(resurrected URL)
 ```
 
@@ -175,3 +175,26 @@ Screens: Summon (input + examples), Séance (progress), Reveal (before/after), S
 | Cost | Per-page and per-job caps, per-IP limit. |
 | Abuse (phishing copies) | Banner, takedown, no login/payment pages, per-IP limit. |
 | Scope creep | MVP = one site end to end first (see tasks). |
+
+## 11. Decision log: S3 + CloudFront replaced by R2 + Worker (2026-11-21)
+
+Why: creating the CloudFront distribution failed with "Your account must be verified before you can add new CloudFront resources" (AWS Support case needed, unknown wait). R2 + a Worker gives the same result with no block.
+
+| Concern | S3 + CloudFront (planned) | R2 + Worker (built) |
+|---|---|---|
+| Storage | Private S3 bucket | R2 bucket `dead-link-seance-sites` (APAC) |
+| Serving | CloudFront + OAC | Worker `dead-link-seance-sites` with an R2 binding |
+| Folder URL to index.html | CloudFront Function | Worker `keyFor()` |
+| No-scripts headers | Response headers policy | Worker `SECURITY_HEADERS` (same CSP) |
+| 30-day expiry | S3 lifecycle on `sites/` | R2 lifecycle on `sites/` (`infra/r2-lifecycle.json`) |
+| Upload from app | AWS SDK S3 client | Same `S3Deployer`, `DEPLOY_S3_ENDPOINT` set to the R2 S3 endpoint |
+| Public URL | `https://<dist>.cloudfront.net/sites/<id>/` | `https://dead-link-seance-sites.<subdomain>.workers.dev/sites/<id>/` |
+
+Free tier limits checked 2026-11-21 ([R2 pricing](https://developers.cloudflare.com/r2/pricing/), [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)): 10 GB storage, 1M writes and 10M reads per month, free egress; Workers 100k requests per day, 10 ms CPU per request. Risk: past 100k requests a day the Worker returns error 1027 until midnight UTC.
+
+Config:
+- Worker: `apps/sites-worker` (`cloudflare.config.ts`, deployed with `cf deploy`; cf 1.0.0-rc.2, Node 26).
+- App env (`apps/server/.env`, git-ignored; see `.env.example`): `DEPLOY_BUCKET`, `DEPLOY_S3_ENDPOINT`, `DEPLOY_BASE_URL`, `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` = an R2 token scoped to this bucket.
+- `infra/sites.yaml` (CloudFormation) is kept only as a fallback; it is not deployed.
+
+Still open: app hosting (task 5.2) and the runtime LLM (task 3.1) still name AWS. Re-decide both before those tasks.
