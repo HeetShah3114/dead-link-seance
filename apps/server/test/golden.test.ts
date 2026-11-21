@@ -66,7 +66,8 @@ describe('golden: GeoCities-style site, end to end', () => {
   });
 
   it('produces the expected report', () => {
-    const { outDir: _o, indexPath: _i, ...report } = result;
+    // outDir and indexPath are temp paths: leave them out of the snapshot.
+    const report = Object.fromEntries(Object.entries(result).filter(([k]) => k !== 'outDir' && k !== 'indexPath'));
     expect(report).toMatchSnapshot();
   });
 
