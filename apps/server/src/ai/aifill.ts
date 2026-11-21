@@ -35,12 +35,16 @@ export function lostNames(pages: FillPage[]): { pages: string[]; images: string[
   for (const page of pages) {
     const $ = cheerio.load(page.html);
     $('a[data-seance-lost]').each((_, el) => {
-      const t = $(el).text().replace(/\s+/g, ' ').trim();
-      if (t && t.length <= 60) p.add(t);
+      // Our own placeholder text ("[image lost]") is not a page name. (task 3.7 finding)
+      const link = $(el).clone();
+      link.find('[data-seance-missing], .ai-restored').remove();
+      const t = link.text().replace(/\s+/g, ' ').trim();
+      if (t && t.length <= 60 && /[\p{L}\p{N}]/u.test(t)) p.add(t);
     });
     $('[data-seance-missing=image]').each((_, el) => {
       const t = ($(el).attr('data-seance-alt') ?? '').trim();
-      if (t && t.length <= 60) i.add(t);
+      // Tracking pixels and spacers had alt="1" or "*": not worth naming. (task 3.7 finding)
+      if (t && t.length <= 60 && (t.match(/\p{L}/gu) ?? []).length >= 3) i.add(t);
     });
   }
   return { pages: [...p], images: [...i] };
@@ -112,7 +116,7 @@ export async function aiFill(pages: FillPage[], facts: Omit<LostFacts, 'lostPage
   const aiNote = stopped
     ? `AI ${restored || lostNoteAi ? 'stopped early' : 'was skipped'}: ${stopped}.`
     : dropped > 0
-      ? `${dropped} AI suggestion${dropped === 1 ? ' was' : 's were'} dropped for adding facts not on the page.`
+      ? `${dropped} AI suggestion${dropped === 1 ? ' was' : 's were'} dropped by the fact check (a detail not on the page, or nothing new to say).`
       : '';
   return { pages: out, aiRestoredItems: restored, aiDropped: dropped, aiSkipped, aiNote, lostNote, lostNoteAi };
 }

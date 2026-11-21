@@ -21,8 +21,9 @@ export const PATCH_SCHEMA = {
 
 export const PATCH_SYSTEM = [
   'You help restore old personal web pages rebuilt from the Internet Archive.',
-  'Some images were lost. For each gap, write what the lost image most likely showed, in at most 12 plain words.',
-  'Use ONLY the alt text, file name and nearby words you are given. Never add names, places, dates, numbers or facts that are not in them.',
+  'Some images were lost. For each gap, write what the lost image most likely was, in at most 8 plain words.',
+  'Use ONLY words from the alt text, file name and nearby words you are given, plus generic words like image, icon, button, banner, logo, photo.',
+  'Never add names, places, dates, numbers, colors, shapes or any detail that is not in them.',
   'If there is nothing to go on, return an empty string for that gap.',
   'No HTML, no links, no quotes from the page. Answer in JSON only.',
 ].join(' ');
@@ -63,6 +64,38 @@ export function validatePatch(text: unknown, source: string, extraStarters: Read
   return t;
 }
 
+/** Generic words a caption may use without the source saying them. Nothing descriptive (no colors, shapes). */
+const CAPTION_WORDS = new Set(
+  (
+    'a an the of for with and or to on in from by at this that its it some probably likely possibly perhaps maybe ' +
+    'image images picture pictures photo photos graphic graphics icon icons button buttons banner banners logo logos ' +
+    'animated animation small large title header heading divider bar line background link links page site home ' +
+    'drawing scan clip art gif jpg text sign label badge award counter webring ring'
+  ).split(' '),
+);
+
+/**
+ * Stricter check for image captions (task 3.7 finding: "heart shaped button" from "Lovers Lane" + ll_buttonm.gif).
+ * Every word must come from the source (alt, file name, nearby words), or be a generic image word.
+ * Words may also match part of a file-name word, e.g. "mail" from "coolmail".
+ */
+export function validateCaption(text: unknown, source: string): string | null {
+  const t = validatePatch(text, source);
+  if (!t) return null;
+  const srcWords = words(source);
+  const src = new Set(srcWords);
+  let informative = 0;
+  for (const w of words(t)) {
+    const base = w.replace(/'s$/, '');
+    const fromSource = src.has(base) || (base.length >= 4 && srcWords.some((s) => s.includes(base))) || (base.endsWith('s') && src.has(base.slice(0, -1)));
+    if (fromSource && !CAPTION_WORDS.has(base)) informative++;
+    if (fromSource || CAPTION_WORDS.has(base)) continue;
+    return null;
+  }
+  // "AI guess: image" tells the reader nothing the box does not already say. (task 3.7 finding)
+  return informative > 0 ? t : null;
+}
+
 export const AI_STYLE =
   'display:inline-block;margin-left:4px;padding:0 3px;border:1px dotted #a855f7;color:#6b21a8;background:#faf5ff;font:italic 12px/1.3 system-ui,sans-serif;';
 
@@ -80,7 +113,7 @@ export function applyPatches(html: string, gaps: ImageGap[], answer: unknown): {
     const gap = typeof gapId === 'string' ? byId.get(gapId) : undefined;
     if (!gap || done.has(gap.id)) continue;
     done.add(gap.id);
-    const text = validatePatch((p as { text?: unknown }).text, `${gap.alt} ${gap.file.replace(/[_\-.]/g, ' ')} ${gap.context}`);
+    const text = validateCaption((p as { text?: unknown }).text, `${gap.alt} ${gap.file.replace(/[_\-.]/g, ' ')} ${gap.context}`);
     const node = $(`[data-seance-gap="${gap.id}"]`);
     if (!text || node.length === 0) {
       dropped++;

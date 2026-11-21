@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import * as cheerio from 'cheerio';
 import { findGaps, isTruncated, markTruncated } from './gaps.js';
-import { applyPatches, validatePatch } from './patches.js';
+import { applyPatches, validateCaption, validatePatch } from './patches.js';
 import { aiLostNote, plainLostNote, type LostFacts } from './lost-note.js';
-import { aiFill } from './aifill.js';
+import { aiFill, lostNames } from './aifill.js';
 import { LlmError, type Llm } from './llm.js';
 
 const placeholder = (alt: string, src = 'http://a.com/my_cat.gif') =>
@@ -57,6 +57,45 @@ describe('validatePatch (3.3)', () => {
       }),
       { numRuns: 400 },
     );
+  });
+});
+
+describe('validateCaption (3.7 findings)', () => {
+  it('drops invented visual details that the plain check let through', () => {
+    expect(validateCaption('heart shaped button', 'Lovers Lane ll buttonm gif')).toBeNull();
+    expect(validateCaption('bittersweet scene', 'bittersweet jpg')).toBeNull();
+    expect(validateCaption('red flashing email icon', 'coolmail gif')).toBeNull();
+  });
+  it('drops captions that say nothing new ("image", "icon")', () => {
+    expect(validateCaption('image', 'welcome gif')).toBeNull();
+    expect(validateCaption('An animated icon', 'mainup gif')).toBeNull();
+    expect(validateCaption('welcome banner', 'welcome gif')).toBe('welcome banner');
+  });
+
+  it('catches swapped counts even with words in between', async () => {
+    const plain = plainLostNote(facts);
+    const llm: Llm = { model: 'f', json: async () => ({ note: '3 of its 4 pages came back from the 1999-02-20 snapshot, and 1 form.' }) };
+    expect(await aiLostNote(plain, facts, llm)).toBeNull();
+  });
+
+  it('keeps captions made of source words and generic image words', () => {
+    expect(validateCaption('Lovers Lane button', 'Lovers Lane ll buttonm gif')).toBe('Lovers Lane button');
+    expect(validateCaption('mail icon', 'coolmail gif')).toBe('mail icon');
+    expect(validateCaption('Probably a Buffy webring banner', 'Buffy webring webring gif')).toBe('Probably a Buffy webring banner');
+  });
+});
+
+describe('lost names (3.7 findings)', () => {
+  it('never lists our own placeholder text as a page name', () => {
+    const page = {
+      path: 'index.html',
+      pageUrl: 'http://a.com/',
+      html: `<body><a href="#lost" data-seance-lost="x">${placeholder('')}</a><a href="#lost" data-seance-lost="y">BANDS I LIKE</a>${placeholder('1')}${placeholder('my cat')}</body>`,
+    };
+    expect(lostNames([page])).toEqual({ pages: ['BANDS I LIKE'], images: ['my cat'] });
+  });
+  it('uses the right pronoun for forms', () => {
+    expect(plainLostNote({ ...facts, formsDisabled: 2 })).toContain('2 forms no longer work, because the server behind them is gone.');
   });
 });
 

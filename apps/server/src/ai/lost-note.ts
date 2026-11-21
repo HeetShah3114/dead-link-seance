@@ -27,11 +27,18 @@ export function plainLostNote(f: LostFacts): string {
   ];
   const lostPages = f.pagesFound - f.pagesRecovered;
   if (lostPages > 0) {
-    parts.push(`${plural(lostPages, 'page was', 'pages were')} never saved by the archive${f.lostPageNames.length ? `, including ${quoteList(f.lostPageNames)}` : ''}.`);
+    const names = f.lostPageNames.slice(0, lostPages);
+    parts.push(`${plural(lostPages, 'page was', 'pages were')} never saved by the archive${names.length ? `, including ${quoteList(names)}` : ''}.`);
   }
   const lostImages = f.assetsFound - f.assetsRecovered;
   if (lostImages > 0 && f.lostImageNames.length) parts.push(`Lost images include ${quoteList(f.lostImageNames)}.`);
-  if (f.formsDisabled > 0) parts.push(`${plural(f.formsDisabled, 'form no longer works', 'forms no longer work')}, because the server behind it is gone.`);
+  if (f.formsDisabled > 0) {
+    parts.push(
+      f.formsDisabled === 1
+        ? '1 form no longer works, because the server behind it is gone.'
+        : `${f.formsDisabled} forms no longer work, because the server behind them is gone.`,
+    );
+  }
   if (f.truncatedPages > 0) parts.push(`${plural(f.truncatedPages, 'page was', 'pages were')} cut off when they were saved.`);
   return parts.join(' ');
 }
@@ -62,7 +69,8 @@ export async function aiLostNote(plain: string, f: LostFacts, llm: Llm): Promise
   const sentences = note.split(/(?<=[.!?])\s+/);
   for (const s of sentences) if (!validatePatch(s.length > 160 ? s.slice(0, 160) : s, source, NOTE_STARTERS)) return null;
   // No new numbers (checked above), and no swapped counts: every "X of Y" must be one of ours.
-  const pairs = (s: string) => new Set([...s.matchAll(/(\d+)\s+(?:out\s+)?of\s+(?:the\s+)?(\d+)/gi)].map((m) => `${m[1]}/${m[2]}`));
+  // Allows up to two words between "of" and the number ("2 of its 4 pages"). (task 3.7 finding)
+  const pairs = (s: string) => new Set([...s.matchAll(/(\d+)\s+(?:out\s+)?of\s+(?:[\p{L}']+\s+){0,2}(\d+)/giu)].map((m) => `${m[1]}/${m[2]}`));
   const ours = pairs(plain);
   for (const p of pairs(note)) if (!ours.has(p)) return null;
   return note;
