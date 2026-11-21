@@ -43,7 +43,13 @@ function main() {
       ? new S3Deployer({
           bucket: process.env.DEPLOY_BUCKET,
           baseUrl: process.env.DEPLOY_BASE_URL,
-          s3: new S3Client({ ...(process.env.AWS_REGION ? { region: process.env.AWS_REGION } : {}) }),
+          // R2 speaks the S3 API: set DEPLOY_S3_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+          // and pass an R2 access key as AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (env only, never in code).
+          s3: new S3Client(
+            process.env.DEPLOY_S3_ENDPOINT
+              ? { endpoint: process.env.DEPLOY_S3_ENDPOINT, region: 'auto', forcePathStyle: true }
+              : { ...(process.env.AWS_REGION ? { region: process.env.AWS_REGION } : {}) },
+          ),
         })
       : undefined;
   const { app } = buildApp({
