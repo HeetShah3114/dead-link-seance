@@ -34,13 +34,13 @@ Days assume ~2.5 weeks.
 - [x] 2.9 Golden test: one saved snapshot through the whole pipeline offline. [design 8]
 
 ## Phase 3: AI gap-filling (Days 9 to 12)
-- [ ] 3.1 [A] `llm` module over Bedrock (swappable), size caps, timeout. [R6.6]
-- [ ] 3.2 [A] Gap detector: finds empty regions, broken tags, placeholder images. [R6.1]
-- [ ] 3.3 [A] Patch prompt returns JSON patches; validator drops patches with new URLs, names or numbers not in the page. Property/unit tests. [R6.3]
-- [ ] 3.4 [B] Apply patches wrapped in `.ai-restored` with visible style and legend. [R6.2]
-- [ ] 3.5 [B] "What was lost" note and `/_lost.html` page. [R6.4]
-- [ ] 3.6 [A] LLM failure path: finish without AI, report `aiSkipped`. [R6.5]
-- [ ] 3.7 Eval on 5 real sites: check by eye that no fact was invented. Log results in the write-up.
+- [x] 3.1 [A] `llm` module over Cloudflare Workers AI (swappable), size caps, timeout, disk cache, daily budget. [R6.6] (Switched from Bedrock; see design section 12.)
+- [x] 3.2 [A] Gap detector: lost images with alt/file/nearby words; cut-off pages get a plain non-AI notice. [R6.1]
+- [x] 3.3 [A] Patch prompt returns JSON patches; validator drops patches with new URLs, names or numbers not in the page. Property/unit tests. [R6.3]
+- [x] 3.4 [B] Apply patches wrapped in `.ai-restored` with visible style and legend. [R6.2]
+- [x] 3.5 [B] "What was lost" note and `/_lost.html` page. Note is always built from facts; AI may only reword it, and the rewording is fact-checked. [R6.4]
+- [x] 3.6 [A] LLM failure path: finish without AI, report `aiSkipped` and the reason. [R6.5]
+- [ ] 3.7 Eval on 5 real sites: check by eye that no fact was invented. Log results in the write-up. BLOCKED: needs CF_ACCOUNT_ID and CF_AI_TOKEN in apps/server/.env.
 
 ## Phase 4: Séance experience (Days 11 to 15, runs in parallel with Phase 3)
 - [ ] 4.1 [B] Spooky theme, readable (contrast AA, reduced motion), mobile layout. Follow `tone.md`. [R9.5, R9.6]

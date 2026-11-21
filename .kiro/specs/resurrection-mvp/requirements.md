@@ -44,7 +44,7 @@ As a visitor, I want the site to work as a site.
 
 ## R6. AI gap-filling, never silent
 As a visitor, I want holes filled honestly.
-1. WHERE a page has missing text, broken layout, or missing-image placeholders, THE SYSTEM SHALL ask an LLM to propose a repair.
+1. WHERE a page has missing-image placeholders with something to go on (alt text, file name or nearby words), THE SYSTEM SHALL ask an LLM for a short caption of what was lost. WHERE a page was cut off by the archive, THE SYSTEM SHALL add a plain, non-AI notice. (MVP scope: the LLM never writes missing page text or layout.)
 2. THE SYSTEM SHALL wrap every AI-written or AI-altered element in markup that is visibly styled and labeled "AI-restored", with a tooltip or note explaining what was done.
 3. THE SYSTEM SHALL NOT let the LLM add facts, names, dates or quotes that have no basis in recovered content. Where there is no basis, it SHALL leave a marked gap instead.
 4. THE SYSTEM SHALL generate one short "what was lost" note per site, shown in the report and on the site.

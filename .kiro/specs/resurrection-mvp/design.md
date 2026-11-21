@@ -13,7 +13,7 @@ Covers requirements R1 to R12 in `requirements.md`.
 | Job queue | In-process queue (`p-queue`) | No Redis. One worker is enough for a demo. |
 | State + cache | SQLite (`better-sqlite3`) on a disk volume | No separate database. Survives restarts. |
 | Wayback client | Own module over `fetch` | Owns User-Agent, rate limit, retry, cache (R4). |
-| LLM | Amazon Bedrock (Claude), via one `llm` module | Hosted, so the live URL works when our laptops are off. Swappable. |
+| LLM | Cloudflare Workers AI (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`, JSON mode), via one `llm` module | Hosted, same Cloudflare account as R2, free daily allowance. Swappable. See section 12. |
 | Output storage + deploy | Cloudflare R2 bucket + one Worker (`apps/sites-worker`), one folder per site | "Deploy" is an upload over R2's S3 API. No build step per site. Free egress. See section 11. |
 | App hosting | One container on Fly.io or AWS App Runner | One deploy for API and UI. |
 | Tests | Vitest + `fast-check` (property tests) | Meets R12.8. |
@@ -198,3 +198,23 @@ Config:
 - `infra/sites.yaml` (CloudFormation) is kept only as a fallback; it is not deployed.
 
 Still open: app hosting (task 5.2) and the runtime LLM (task 3.1) still name AWS. Re-decide both before those tasks.
+
+## 12. Decision log: AI on Cloudflare Workers AI (2026-11-21)
+
+Why: same account as R2, no new vendor, and Bedrock sits on the AWS account that already blocked CloudFront.
+Model: `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, which supports JSON mode and is available on the Workers Free plan.
+Limits checked 2026-11-21 ([pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/), [JSON mode](https://developers.cloudflare.com/workers-ai/features/json-mode/)): 10,000 free Neurons per day, reset 00:00 UTC; this model costs about 26,668 Neurons per M input tokens and 204,805 per M output tokens. One caption call (about 2k tokens in, 300 out) is roughly 115 Neurons, so the free allowance covers roughly 80 calls a day.
+
+What AI does, and what it may not do:
+| Part | AI role | Guard |
+|---|---|---|
+| Lost image boxes | Short "AI guess" caption from alt text, file name, nearby words | `validatePatch`: no new numbers, no capitalized word (name/place) missing from the source, no links/markup, 3 to 160 chars. Dropped patches are counted and reported. |
+| "What was lost" note | Rewords a plain note built from facts | Same check per sentence, no new numbers, every "X of Y" must be one of ours. Else the plain note is used. |
+| Cut-off pages | None | A plain notice "The archived copy of this page ends here." |
+| Missing text | None (not in MVP) | The model never writes page content. |
+
+Marking: AI text sits in `span.ai-restored[data-seance-ai]`, dotted outline, prefixed "AI guess:", with a title tooltip. Any page with AI text gets a legend line in its banner. `_lost.html` labels an AI-worded note.
+
+Cost controls: `MAX_AI_PAGES` (5) pages per site, `MAX_GAPS_PER_PAGE` (8), `AI_CALLS_PER_DAY` (30) in-process budget, and a disk cache of answers so rebuilds and demo reruns are free.
+Failure: any AI error stops further AI calls for that job; the site is still built, with `aiSkipped` and a plain reason in the report.
+Config (env or `apps/server/.env`): `CF_ACCOUNT_ID`, `CF_AI_TOKEN` (a Workers AI token, not the R2 key), optional `CF_AI_MODEL`. Without them AI is off.
