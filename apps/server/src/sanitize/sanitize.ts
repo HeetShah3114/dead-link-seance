@@ -39,6 +39,19 @@ const OPTIONS: sanitizeHtml.IOptions = {
   allowVulnerableTags: true,
   // Drop the content of these, not just the tags.
   nonTextTags: ['script', 'noscript', 'iframe', 'object', 'embed', 'applet', 'frameset', 'template', 'svg', 'math'],
+  // data: is allowed for images, but only in img src. Found by the property test (img href="data:...").
+  transformTags: {
+    img: (tagName, attribs) => {
+      const out: sanitizeHtml.Attributes = {};
+      for (const [k, v] of Object.entries(attribs)) {
+        if (k === 'href') continue;
+        if (k !== 'src' && /^\s*data:/i.test(v)) continue;
+        if (k === 'src' && /^\s*data:/i.test(v) && !/^\s*data:image\/(gif|png|jpe?g|webp|bmp);/i.test(v)) continue;
+        out[k] = v;
+      }
+      return { tagName, attribs: out };
+    },
+  },
   exclusiveFilter: (frame) => {
     const a = frame.attribs;
     // No meta refresh (redirects), no link except stylesheets and icons.

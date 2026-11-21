@@ -57,6 +57,14 @@ describe('sanitize', () => {
     expect(out).toContain('>a</a>');
   });
 
+  it('allows data: only in img src, and only for images (regression: found by the property test)', () => {
+    const out = sanitize('<img href="data:text/html,alert(1)" src="data:image/gif;base64,R0lG"><img src="data:text/html,x"><img lowsrc="data:image/gif;base64,R0lG">');
+    expect(out).not.toContain('text/html');
+    expect(out).not.toContain('href');
+    expect(out).not.toContain('lowsrc');
+    expect(out).toContain('src="data:image/gif;base64,R0lG"');
+  });
+
   it('keeps textarea and option text', () => {
     const out = sanitize('<textarea>Sign my guestbook!</textarea><select><option>Hollywood</option></select>');
     expect(out).toContain('Sign my guestbook!');
