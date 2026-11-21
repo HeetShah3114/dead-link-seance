@@ -9,6 +9,7 @@ import { registerRoutes } from './routes.js';
 import type { ResurrectDeps } from './pipeline/resurrect.js';
 import { S3Client } from '@aws-sdk/client-s3';
 import { S3Deployer, type Deployer } from './deploy/s3.js';
+import { DEFAULT_LIMITS, loadLimits, type Limits } from './config.js';
 
 export interface AppOptions {
   /** SQLite file, or ":memory:". */
@@ -16,20 +17,23 @@ export interface AppOptions {
   pipeline: Pick<ResurrectDeps, 'client' | 'cache' | 'outRoot'>;
   publicBase?: string;
   deployer?: Deployer;
+  limits?: Partial<Limits>;
   logger?: boolean;
 }
 
 export function buildApp(opts: AppOptions) {
-  const app = Fastify({ logger: opts.logger ?? true });
+  const app = Fastify({ logger: opts.logger ?? true, bodyLimit: 16 * 1024 });
   const store = new JobStore(openDb(opts.dbFile));
+  const limits = { ...DEFAULT_LIMITS, ...opts.limits };
   const runner = new JobRunner({
     store,
     pipeline: opts.pipeline,
+    limits,
     ...(opts.publicBase !== undefined ? { publicBase: opts.publicBase } : {}),
     ...(opts.deployer ? { deployer: opts.deployer } : {}),
     log: (msg, extra) => app.log.warn(extra ?? {}, msg),
   });
-  registerRoutes(app, { store, runner, outRoot: opts.pipeline.outRoot });
+  registerRoutes(app, { store, runner, outRoot: opts.pipeline.outRoot, summonsPerHour: limits.summonsPerHour });
   return { app, runner, store };
 }
 
@@ -69,6 +73,7 @@ function main() {
     },
     ...(process.env.PUBLIC_BASE_URL ? { publicBase: process.env.PUBLIC_BASE_URL } : {}),
     ...(deployer ? { deployer } : {}),
+    limits: loadLimits(),
   });
   app
     .listen({ port: Number(process.env.PORT ?? 3000), host: process.env.HOST ?? '127.0.0.1' })

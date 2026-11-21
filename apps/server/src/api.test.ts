@@ -20,10 +20,11 @@ afterEach(async () => {
 const snap: Snapshot = { timestamp: '20030412101500', original: 'http://a.com/', mimetype: 'text/html', statuscode: '200' };
 const page = '<html><body><h1>Welcome</h1><script>x()</script><img src="p.gif"></body></html>';
 
-function make(find: () => Promise<Snapshot | null>, deployer?: Deployer) {
+function make(find: () => Promise<Snapshot | null>, deployer?: Deployer, summonsPerHour = 50) {
   return buildApp({
     dbFile: ':memory:',
     logger: false,
+    limits: { summonsPerHour },
     ...(deployer ? { deployer } : {}),
     pipeline: {
       client: {
@@ -144,6 +145,7 @@ describe('deploy step', () => {
   it('uses the deployer URL and marks the deploy step Published', async () => {
     const calls: Array<{ siteId: string; dir: string }> = [];
     const deployer: Deployer = {
+      urlFor: (siteId) => `https://d1.cloudfront.net/sites/${siteId}/`,
       deploy: async (siteId, dir) => {
         calls.push({ siteId, dir });
         return { url: `https://d1.cloudfront.net/sites/${siteId}/` };
@@ -160,6 +162,7 @@ describe('deploy step', () => {
 
   it('reports DEPLOY_FAILED without leaking upload details', async () => {
     const deployer: Deployer = {
+      urlFor: (siteId) => `https://d1.cloudfront.net/sites/${siteId}/`,
       deploy: async () => {
         throw new DeployError('AccessDenied: arn:aws:iam::123:role/secret');
       },
@@ -172,5 +175,73 @@ describe('deploy step', () => {
     expect(view.error?.code).toBe('DEPLOY_FAILED');
     expect(view.steps.find((s) => s.name === 'deploy')?.state).toBe('failed');
     expect(JSON.stringify(view)).not.toContain('arn:aws');
+  });
+});
+
+describe('limits (task 2.7)', () => {
+  it('allows one active job per client', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const { app, runner } = make(async () => {
+      await gate;
+      return snap;
+    });
+    expect((await summon(app, 'http://a.com/')).statusCode).toBe(202);
+    const second = await summon(app, 'http://b.com/');
+    expect(second.statusCode).toBe(409);
+    expect(second.json().error.code).toBe('JOB_ACTIVE');
+    release();
+    await runner.idle();
+    expect((await summon(app, 'http://b.com/')).statusCode).toBe(202);
+    await runner.idle();
+  });
+
+  it('limits summons per hour', async () => {
+    const { app, runner } = make(async () => snap, undefined, 2);
+    for (const u of ['http://a.com/', 'http://b.com/']) {
+      expect((await summon(app, u)).statusCode).toBe(202);
+      await runner.idle();
+    }
+    const third = await summon(app, 'http://c.com/');
+    expect(third.statusCode).toBe(429);
+    expect(third.json().error).toMatchObject({ code: 'RATE_LIMITED', spooky: expect.any(String) });
+  });
+
+  it('rejects oversized request bodies', async () => {
+    const { app } = make(async () => snap);
+    const res = await app.inject({ method: 'POST', url: '/api/summons', payload: { url: `http://a.com/${'x'.repeat(20000)}` } });
+    expect(res.statusCode).toBe(413);
+  });
+});
+
+describe('reuse (task 2.8)', () => {
+  it('reuses an earlier build of the same url and snapshot without fetching pages again', async () => {
+    let gets = 0;
+    const { app, runner } = buildApp({
+      dbFile: ':memory:',
+      logger: false,
+      pipeline: {
+        client: {
+          findBestSnapshot: async () => snap,
+          get: async () => {
+            gets++;
+            return new Response(page, { headers: { 'content-type': 'text/html' } });
+          },
+        },
+        cache: new DiskCache(path.join(dir, 'cache')),
+        outRoot: path.join(dir, 'out'),
+      },
+    });
+    const first = (await summon(app, 'http://a.com/')).json().jobId;
+    await runner.idle();
+    const after1 = gets;
+    const second = (await summon(app, 'http://a.com/')).json().jobId;
+    await runner.idle();
+    const v1 = (await app.inject({ method: 'GET', url: `/api/summons/${first}` })).json() as JobView;
+    const v2 = (await app.inject({ method: 'GET', url: `/api/summons/${second}` })).json() as JobView;
+    expect(v2.status).toBe('done');
+    expect(v2.result?.siteUrl).toBe(v1.result?.siteUrl);
+    expect(v2.result?.report.reused).toBe(true);
+    expect(gets).toBe(after1);
   });
 });

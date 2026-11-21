@@ -14,6 +14,8 @@ export interface RouteContext {
   runner: JobRunner;
   /** Folder holding one subfolder per resurrected site. */
   outRoot: string;
+  summonsPerHour: number;
+  now?: () => number;
 }
 
 export function toView(j: JobRow): JobView {
@@ -40,6 +42,14 @@ export function registerRoutes(app: FastifyInstance, ctx: RouteContext): void {
     }
     // Client identity is hashed so raw IPs are never stored. (design 7)
     const clientHash = createHash('sha256').update(req.ip).digest('hex').slice(0, 16);
+    // One summoning at a time per client, and a few per hour. (R1.4, R11.1)
+    if (ctx.store.hasActive(clientHash)) {
+      return reply.code(409).send({ error: apiError('JOB_ACTIVE') });
+    }
+    const now = (ctx.now ?? Date.now)();
+    if (ctx.store.countSince(clientHash, now - 3600_000) >= ctx.summonsPerHour) {
+      return reply.code(429).header('retry-after', '3600').send({ error: apiError('RATE_LIMITED') });
+    }
     const job = ctx.store.create(guard.url.href, clientHash);
     ctx.runner.enqueue(job.id);
     const res: SummonResponse = { jobId: job.id };

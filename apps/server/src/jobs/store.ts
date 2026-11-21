@@ -97,6 +97,29 @@ export class JobStore {
     return r ? fromRaw(r) : null;
   }
 
+  /** Jobs this client started since `sinceMs`. Used for the per-client limit. (R11.1) */
+  countSince(clientHash: string, sinceMs: number): number {
+    const r = this.db.prepare('SELECT COUNT(*) AS n FROM jobs WHERE client_hash = ? AND created_at >= ?').get(clientHash, sinceMs) as { n: number };
+    return r.n;
+  }
+
+  /** Whether this client has a job queued or running. (R1.4) */
+  hasActive(clientHash: string): boolean {
+    return this.db.prepare("SELECT 1 FROM jobs WHERE client_hash = ? AND status IN ('queued', 'running') LIMIT 1").get(clientHash) !== undefined;
+  }
+
+  /** Newest finished job for the same url + snapshot, younger than `sinceMs`. (R8.3) */
+  findReusable(inputUrl: string, timestamp: string, sinceMs: number): JobRow | null {
+    const rows = this.db
+      .prepare("SELECT * FROM jobs WHERE input_url = ? AND status = 'done' AND created_at >= ? ORDER BY created_at DESC LIMIT 20")
+      .all(inputUrl, sinceMs) as Raw[];
+    for (const r of rows) {
+      const job = fromRaw(r);
+      if (job.snapshot?.timestamp === timestamp && job.result && job.siteId) return job;
+    }
+    return null;
+  }
+
   update(id: string, patch: JobPatch): void {
     const sets: string[] = [];
     const vals: unknown[] = [];

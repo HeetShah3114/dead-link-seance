@@ -13,11 +13,13 @@ export class DeployError extends Error {
 /** Publishes a built site folder and returns its public URL. (R8.1, R8.2) */
 export interface Deployer {
   deploy(siteId: string, dir: string): Promise<{ url: string }>;
+  /** Public URL a site id has once deployed. Used to check a reusable earlier build. */
+  urlFor(siteId: string): string;
 }
 
 export interface S3DeployerOptions {
   bucket: string;
-  /** Public origin of the CloudFront distribution, e.g. https://d123.cloudfront.net */
+  /** Public origin that serves the bucket, e.g. https://dead-link-seance-sites.<sub>.workers.dev */
   baseUrl: string;
   /** Key prefix. Matches the bucket lifecycle rule for expiring sites. */
   prefix?: string;
@@ -60,6 +62,10 @@ export class S3Deployer implements Deployer {
       if (e instanceof DeployError) throw e;
       throw new DeployError(e instanceof Error ? e.message : 'Upload failed');
     }
-    return { url: `${this.o.baseUrl.replace(/\/+$/, '')}/${this.prefix}/${siteId}/` };
+    return { url: this.urlFor(siteId) };
+  }
+
+  urlFor(siteId: string): string {
+    return `${this.o.baseUrl.replace(/\/+$/, '')}/${this.prefix}/${siteId}/`;
   }
 }
