@@ -87,7 +87,7 @@ As a visitor, I want a clear message when it breaks.
 ## R11. Abuse and safety
 As the maintainer, I want to avoid harm.
 1. THE SYSTEM SHALL rate-limit summons per client.
-2. THE SYSTEM SHALL block private, loopback and link-local targets (SSRF) at every fetch, including redirects.
+2. THE SYSTEM SHALL refuse user URLs that name private, loopback, link-local or local-only targets (in any IP spelling), and SHALL send outbound requests only to allow-listed archive hosts over https, checking every redirect hop (SSRF). The user's own host is never fetched or DNS-resolved, because dead sites usually no longer resolve.
 3. THE SYSTEM SHALL sanitize archived HTML before output (no scripts, no inline event handlers, no `javascript:` URLs).
 4. THE SYSTEM SHALL provide a takedown contact on every page and a way to remove a deployed site.
 

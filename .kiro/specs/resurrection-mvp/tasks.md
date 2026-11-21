@@ -27,7 +27,7 @@ Days assume ~2.5 weeks.
 - [ ] 2.2 [B] `repair` full: rewrite internal links, lost-page markers, download assets under size limit, placeholders, report counts. [R5]
 - [ ] 2.3 [B] Property tests: link rewriter never leaves off-site or archive-rewritten links, and is idempotent. [R12.8]
 - [ ] 2.4 [A] `sanitize` module (allow-list) plus property test: no script, no `on*`, no `javascript:` for any input. [R11.3, R12.8]
-- [ ] 2.5 [A] `url-guard` (SSRF, DNS check, redirect re-check) plus property test. [R1.2, R11.2]
+- [x] 2.5 [A] `url-guard` (SSRF, DNS check, redirect re-check) plus property test. [R1.2, R11.2]
 - [ ] 2.6 [A] Backoff on 429/5xx, timeouts, error codes mapped to the API error shape. [R4.4, R10]
 - [ ] 2.7 [B] Per-IP limit, one active job, size caps. [R1.4, R11.1, design 7]
 - [ ] 2.8 [B] Reuse existing deployment for same url+snapshot. [R8.3]
