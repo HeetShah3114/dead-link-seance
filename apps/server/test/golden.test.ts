@@ -78,6 +78,39 @@ describe('golden: GeoCities-style site, end to end', () => {
     }
   });
 
+  it('with AI on: captions are marked, the banner explains them, invented facts are dropped', async () => {
+    const store = await archive();
+    const snap: Snapshot = { timestamp: TS, original: BASE, mimetype: 'text/html', statuscode: '200' };
+    const answers = {
+      patches: [{ gap: 'g1', text: 'Probably a Buffy webring banner' }],
+      note: 'Stacy built this page in Ohio in 1997.',
+    };
+    const r = await resurrect(BASE, {
+      client: {
+        findBestSnapshot: async () => snap,
+        get: async (u: string) => {
+          const f = store[u.replace(/^https:\/\/web\.archive\.org\/web\/\d+id_\//, '')];
+          return f ? new Response(f.body, { headers: { 'content-type': f.type } }) : new Response('', { status: 404, headers: { 'content-type': 'text/html' } });
+        },
+      },
+      cache: new DiskCache(path.join(dir, 'cache-ai')),
+      outRoot: path.join(dir, 'out'),
+      outDirName: 'goldensiteai',
+      llm: { model: 'fake', json: async () => answers },
+    });
+    const home = await readFile(path.join(r.outDir, 'index.html'), 'utf8');
+    expect(r.aiRestoredItems).toBe(1);
+    expect(home).toContain('AI guess: Probably a Buffy webring banner');
+    expect(home).toContain('class="ai-restored"');
+    expect(home).toContain('was written by AI');
+    // the note invented a name, a place and a year: the plain note is used instead
+    expect(r.lostNoteAi).toBe(false);
+    expect(r.lostNote).not.toContain('Ohio');
+    const lost = await readFile(path.join(r.outDir, '_lost.html'), 'utf8');
+    expect(lost).toContain('What was lost');
+    expect(lost).not.toContain('Ohio');
+  });
+
   it('keeps the promises that matter, whatever the snapshot says', async () => {
     const home = await readFile(path.join(result.outDir, 'index.html'), 'utf8');
     expect(home).toContain('Café'); // latin1 decoded correctly

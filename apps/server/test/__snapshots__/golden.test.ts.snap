@@ -2,6 +2,7 @@
 
 exports[`golden: GeoCities-style site, end to end > produces the expected files 1`] = `
 [
+  "_lost.html",
   "a/9e24ea7e31397bfe.gif",
   "a/d35ac013d930851f.gif",
   "index.html",
@@ -11,14 +12,19 @@ exports[`golden: GeoCities-style site, end to end > produces the expected files 
 
 exports[`golden: GeoCities-style site, end to end > produces the expected report 1`] = `
 {
+  "aiNote": "AI is not set up for this server.",
+  "aiRestoredItems": 0,
+  "aiSkipped": true,
   "assetsFound": 3,
   "assetsRecovered": 2,
   "beforeUrl": "https://web.archive.org/web/19990220012606/http://www.geocities.com/Hollywood/Hills/1234/",
-  "bytes": 5378,
+  "bytes": 8949,
   "formsDisabled": 1,
   "lostAssets": [
     "http://www.geocities.com/Hollywood/Hills/1234/webring.gif",
   ],
+  "lostNote": "2 of 4 pages and 2 of 3 images and files came back from the 1999-02-20 snapshot. 2 pages were never saved by the archive, including "The cast", "Some Assembly Required". Lost images include "Buffy webring". 1 form no longer works, because the server behind it is gone.",
+  "lostNoteAi": false,
   "lostPages": [
     "http://www.geocities.com/Hollywood/Hills/1234/cast.html",
     "http://www.geocities.com/Hollywood/Hills/1234/ep/s2e2.html",
@@ -38,5 +44,6 @@ exports[`golden: GeoCities-style site, end to end > produces the expected report
   ],
   "snapshotDate": "1999-02-20",
   "snapshotTimestamp": "19990220012606",
+  "truncatedPages": 0,
 }
 `;
