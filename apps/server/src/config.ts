@@ -19,6 +19,12 @@ export interface Limits {
   summonsPerHour: number;
   /** Reuse an earlier build of the same url + snapshot if younger than this. (R8.3) */
   reuseMaxAgeMs: number;
+  /** Pages per site that may get AI captions. (R6.6) */
+  maxAiPages: number;
+  /** Lost images per page sent to the AI. (R6.6) */
+  maxGapsPerPage: number;
+  /** Model calls per UTC day, to stay inside the Workers AI free allowance. Cached answers are free. */
+  aiCallsPerDay: number;
 }
 
 export function loadLimits(): Limits {
@@ -32,6 +38,9 @@ export function loadLimits(): Limits {
     summonsPerHour: num('SUMMONS_PER_HOUR', 3),
     // R2 deletes sites/ after 30 days; stop reusing a day before that.
     reuseMaxAgeMs: num('REUSE_MAX_AGE_MS', 29 * 24 * 3600 * 1000),
+    maxAiPages: num('MAX_AI_PAGES', 5),
+    maxGapsPerPage: num('MAX_GAPS_PER_PAGE', 8),
+    aiCallsPerDay: num('AI_CALLS_PER_DAY', 30),
   };
 }
 
@@ -44,4 +53,7 @@ export const DEFAULT_LIMITS: Limits = {
   maxSiteBytes: 25 * 1024 * 1024,
   summonsPerHour: 3,
   reuseMaxAgeMs: 29 * 24 * 3600 * 1000,
+  maxAiPages: 5,
+  maxGapsPerPage: 8,
+  aiCallsPerDay: 30,
 };

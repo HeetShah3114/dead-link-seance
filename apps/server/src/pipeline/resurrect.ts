@@ -10,6 +10,9 @@ import { crawl, StartPageError, type SkippedPage } from '../crawl/crawler.js';
 import { fetchAssets } from '../crawl/assets.js';
 import { pageKey } from '../site/paths.js';
 import { DEFAULT_LIMITS, type Limits } from '../config.js';
+import { aiFill } from '../ai/aifill.js';
+import { isTruncated, markTruncated } from '../ai/gaps.js';
+import type { Llm } from '../ai/llm.js';
 
 export class PipelineError extends Error {
   constructor(
@@ -21,7 +24,7 @@ export class PipelineError extends Error {
   }
 }
 
-export type PipelineStep = 'lookup' | 'fetch' | 'repair' | 'build';
+export type PipelineStep = 'lookup' | 'fetch' | 'repair' | 'aifill' | 'build';
 
 export interface ResurrectDeps {
   client: Pick<WaybackClient, 'get' | 'findBestSnapshot'>;
@@ -31,6 +34,8 @@ export interface ResurrectDeps {
   /** Subfolder name. Default: slug of the URL plus the snapshot timestamp. */
   outDirName?: string;
   limits?: Partial<Limits>;
+  /** Optional. Without it the site is built with no AI text at all. */
+  llm?: Llm;
   /** Progress callback, called as each step starts and as it moves. */
   onStep?: (step: PipelineStep, detail?: string) => void;
 }
@@ -56,6 +61,12 @@ export interface ResurrectResult {
   lostAssets: string[];
   scriptsRemoved: number;
   formsDisabled: number;
+  truncatedPages: number;
+  aiRestoredItems: number;
+  aiSkipped: boolean;
+  aiNote: string;
+  lostNote: string;
+  lostNoteAi: boolean;
   bytes: number;
 }
 
@@ -137,9 +148,40 @@ export async function rebuild(loc: Located, deps: ResurrectDeps): Promise<Resurr
     return { path: p.path, html: r.html, pageUrl: p.url.href };
   });
 
+  // Pages the archive cut off mid-download get an honest, non-AI notice.
+  let truncatedPages = 0;
+  const marked = pages.map((p, i) => {
+    if (!isTruncated(crawled.pages[i]!.html)) return p;
+    truncatedPages++;
+    return { ...p, html: markTruncated(p.html) };
+  });
+
+  deps.onStep?.('aifill', deps.llm ? 'Looking for gaps' : 'AI is not set up');
+  const fill = await aiFill(
+    marked,
+    {
+      siteUrl: start.href,
+      snapshotDate: formatDate(ts),
+      pagesFound: crawled.found,
+      pagesRecovered: crawled.pages.length,
+      assetsFound: assetUrls.length,
+      assetsRecovered: assets.recovered,
+      formsDisabled,
+      truncatedPages,
+    },
+    deps.llm,
+    { maxAiPages: limits.maxAiPages, maxGapsPerPage: limits.maxGapsPerPage },
+  );
+
   deps.onStep?.('build');
   const outDir = path.join(deps.outRoot, deps.outDirName ?? `${slug(url)}-${ts}`);
-  const built = await buildSite({ outDir, timestamp: ts, pages, assets: assets.files });
+  const built = await buildSite({
+    outDir,
+    timestamp: ts,
+    pages: fill.pages,
+    assets: assets.files,
+    lost: { note: fill.lostNote, noteIsAi: fill.lostNoteAi, aiNote: fill.aiNote, siteUrl: start.href, lostPages: [...lostPages], lostAssets: [...lostAssets] },
+  });
 
   return {
     outDir,
@@ -156,6 +198,12 @@ export async function rebuild(loc: Located, deps: ResurrectDeps): Promise<Resurr
     lostAssets: [...lostAssets],
     scriptsRemoved,
     formsDisabled,
+    truncatedPages,
+    aiRestoredItems: fill.aiRestoredItems,
+    aiSkipped: fill.aiSkipped,
+    aiNote: fill.aiNote,
+    lostNote: fill.lostNote,
+    lostNoteAi: fill.lostNoteAi,
     bytes: built.bytes,
   };
 }
