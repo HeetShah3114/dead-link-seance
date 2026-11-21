@@ -34,6 +34,12 @@ export function buildApp(opts: AppOptions) {
 }
 
 function main() {
+  // Local secrets live in apps/server/.env (git-ignored). Real env vars win over the file.
+  try {
+    process.loadEnvFile('.env');
+  } catch {
+    /* no .env file: use the real environment only */
+  }
   const dataDir = process.env.DATA_DIR ?? 'data';
   const outRoot = process.env.OUT_DIR ?? 'out';
   mkdirSync(dataDir, { recursive: true });
