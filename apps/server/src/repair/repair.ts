@@ -160,6 +160,8 @@ export function repairPage(html: string, o: RepairOptions): RepairResult {
             .attr('class', 'seance-missing')
             .attr('data-seance-missing', 'image')
             .attr('data-seance-asset', 'missing')
+            .attr('data-seance-src', u.href)
+            .attr('data-seance-alt', alt)
             .attr('aria-label', alt ? `Lost image: ${alt}` : 'Lost image')
             .attr('title', 'This image was not recovered from the archive.')
             .attr('style', MISSING_STYLE + (w ? `width:${w}px;` : '') + (h ? `height:${h}px;` : ''))
