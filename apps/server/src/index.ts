@@ -10,6 +10,8 @@ import type { ResurrectDeps } from './pipeline/resurrect.js';
 import { S3Client } from '@aws-sdk/client-s3';
 import { S3Deployer, type Deployer } from './deploy/s3.js';
 import { DEFAULT_LIMITS, loadLimits, type Limits } from './config.js';
+import { llmFromEnv } from './ai/from-env.js';
+import type { Llm } from './ai/llm.js';
 
 export interface AppOptions {
   /** SQLite file, or ":memory:". */
@@ -17,6 +19,7 @@ export interface AppOptions {
   pipeline: Pick<ResurrectDeps, 'client' | 'cache' | 'outRoot'>;
   publicBase?: string;
   deployer?: Deployer;
+  llm?: Llm;
   limits?: Partial<Limits>;
   logger?: boolean;
 }
@@ -31,6 +34,7 @@ export function buildApp(opts: AppOptions) {
     limits,
     ...(opts.publicBase !== undefined ? { publicBase: opts.publicBase } : {}),
     ...(opts.deployer ? { deployer: opts.deployer } : {}),
+    ...(opts.llm ? { llm: opts.llm } : {}),
     log: (msg, extra) => app.log.warn(extra ?? {}, msg),
   });
   registerRoutes(app, { store, runner, outRoot: opts.pipeline.outRoot, summonsPerHour: limits.summonsPerHour });
@@ -47,6 +51,8 @@ function main() {
   const dataDir = process.env.DATA_DIR ?? 'data';
   const outRoot = process.env.OUT_DIR ?? 'out';
   mkdirSync(dataDir, { recursive: true });
+  const limits = loadLimits();
+  const llm = llmFromEnv(dataDir, limits.aiCallsPerDay);
   // Publishing is on only when both are set. Credentials come from the standard AWS chain (AWS_PROFILE etc.).
   const deployer: Deployer | undefined =
     process.env.DEPLOY_BUCKET && process.env.DEPLOY_BASE_URL
@@ -73,8 +79,10 @@ function main() {
     },
     ...(process.env.PUBLIC_BASE_URL ? { publicBase: process.env.PUBLIC_BASE_URL } : {}),
     ...(deployer ? { deployer } : {}),
-    limits: loadLimits(),
+    ...(llm ? { llm } : {}),
+    limits,
   });
+  app.log.info({ ai: llm ? llm.model : 'off', publish: deployer ? 'r2' : 'local' }, 'configured');
   app
     .listen({ port: Number(process.env.PORT ?? 3000), host: process.env.HOST ?? '127.0.0.1' })
     .catch((err) => {

@@ -5,6 +5,7 @@ import type { JobResult, StepInfo, StepName } from '@seance/shared';
 import { locate, rebuild, type ResurrectDeps } from '../pipeline/resurrect.js';
 import type { Deployer } from '../deploy/s3.js';
 import { DEFAULT_LIMITS, type Limits } from '../config.js';
+import type { Llm } from '../ai/llm.js';
 import { toApiError } from './errors.js';
 import { JobStore } from './store.js';
 
@@ -17,6 +18,8 @@ export interface RunnerOptions {
   publicBase?: string;
   /** Publishes the built site (R2 + Worker). When absent, sites are served from this server. */
   deployer?: Deployer;
+  /** Optional AI for gap-filling. Without it, sites are built with no AI text. */
+  llm?: Llm;
   log?: (msg: string, extra?: Record<string, unknown>) => void;
   now?: () => number;
 }
@@ -97,7 +100,7 @@ export class JobRunner {
       }
 
       const siteId = newSiteId();
-      const r = await rebuild(loc, { ...pipeline, outDirName: siteId, limits: this.limits, onStep });
+      const r = await rebuild(loc, { ...pipeline, outDirName: siteId, limits: this.limits, onStep, ...(this.o.llm ? { llm: this.o.llm } : {}) });
       let siteUrl = this.siteUrlFor(siteId);
       let deployDetail = 'Served from this server';
       if (this.o.deployer) {
@@ -112,14 +115,16 @@ export class JobRunner {
           siteUrl,
           beforeUrl: r.beforeUrl,
           downloadUrl: '', // zip download arrives with task 4.6
-          lostNote: '', // "what was lost" note arrives with task 3.5
+          lostNote: r.lostNote,
+          lostNoteIsAi: r.lostNoteAi,
           report: {
             pagesFound: r.pagesFound,
             pagesRecovered: r.pagesRecovered,
             assetsFound: r.assetsFound,
             assetsRecovered: r.assetsRecovered,
-            aiRestoredItems: 0,
-            aiSkipped: true,
+            aiRestoredItems: r.aiRestoredItems,
+            aiSkipped: r.aiSkipped,
+            ...(r.aiNote ? { aiNote: r.aiNote } : {}),
             formsDisabled: r.formsDisabled,
             lostPages: r.lostPages,
             lostAssets: r.lostAssets,
@@ -128,8 +133,9 @@ export class JobRunner {
         {
           fetch: `${r.pagesRecovered} of ${r.pagesFound} pages, ${r.assetsRecovered} of ${r.assetsFound} images and files`,
           repair: `${r.lostPages.length} lost links marked, ${r.formsDisabled} forms switched off`,
-          // aifill is not built yet (tasks 3.x): mark it honestly.
-          aifill: 'Skipped (not built yet)',
+          aifill: r.aiSkipped
+            ? r.aiNote || 'Skipped: no gaps AI could help with'
+            : `${r.aiRestoredItems} AI-restored item${r.aiRestoredItems === 1 ? '' : 's'}, all marked${r.lostNoteAi ? ', plus the lost note' : ''}`,
           deploy: deployDetail,
         },
       );

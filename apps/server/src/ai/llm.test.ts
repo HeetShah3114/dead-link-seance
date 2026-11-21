@@ -44,7 +44,9 @@ describe('WorkersAiLlm', () => {
     ];
     for (const [respond, kind] of cases) {
       const { fetchImpl } = fake(respond);
-      const err = await new WorkersAiLlm({ accountId: ACCOUNT, token: 'SECRET-TOKEN', fetchImpl }).json(req).catch((e) => e);
+      const err = (await new WorkersAiLlm({ accountId: ACCOUNT, token: 'SECRET-TOKEN', fetchImpl })
+        .json(req)
+        .catch((e: unknown) => e)) as LlmError;
       expect(err).toBeInstanceOf(LlmError);
       expect(err.kind).toBe(kind);
       expect(String(err.message)).not.toContain('SECRET-TOKEN');

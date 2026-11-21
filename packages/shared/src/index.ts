@@ -48,6 +48,8 @@ export interface Report {
   assetsRecovered: number;
   aiRestoredItems: number;
   aiSkipped: boolean;
+  /** Why AI was skipped or what it dropped, in plain words. (R6.5) */
+  aiNote?: string;
   /** Forms switched off because their server is gone. (R5.7) */
   formsDisabled: number;
   lostPages: string[];
@@ -60,7 +62,10 @@ export interface JobResult {
   siteUrl: string;
   beforeUrl: string;
   downloadUrl: string;
+  /** "What was lost" note. Always set; written from facts, maybe reworded by AI. (R6.4) */
   lostNote: string;
+  /** True when the note's wording is AI's. Show it marked. (R6.2) */
+  lostNoteIsAi?: boolean;
   report: Report;
 }
 
