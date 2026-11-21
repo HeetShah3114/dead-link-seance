@@ -1,0 +1,237 @@
+/* The séance scene. Pure CSS animation over the pixel art; phases come from the real job. */
+
+.seance {
+  margin: 1rem 0;
+  position: relative;
+}
+
+.seance-stage {
+  position: relative;
+  aspect-ratio: 1672 / 941;
+  width: 100%;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: #0b0810 url('/art/room.png') center / cover no-repeat;
+}
+
+/* Darken the room a little, so the candles carry the light. Brightens on success. */
+.seance-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 78%, transparent 0 18%, rgba(11, 8, 16, 0.55) 60%);
+  pointer-events: none;
+  transition: background 1.2s;
+}
+[data-phase='idle'] .seance-stage::after { background: rgba(11, 8, 16, 0.55); }
+[data-phase='failed'] .seance-stage::after { background: rgba(11, 8, 16, 0.75); }
+[data-phase='done'] .seance-stage::after { background: radial-gradient(ellipse at 92% 45%, transparent 0 12%, rgba(11, 8, 16, 0.35) 55%); }
+
+.seance-moonlight { display: none; }
+
+/* ---------- summoning circle ---------- */
+.seance-circle {
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  width: 34%;
+  height: 22%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.seance-star {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #9b1c2e;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px #d63a4a);
+  opacity: 0.35;
+  transition: opacity 0.8s, stroke 0.8s;
+}
+.seance-star polygon { stroke-linejoin: miter; }
+[data-phase='fetch'] .seance-star { opacity: 0.6; }
+[data-phase='repair'] .seance-star { opacity: 0.8; stroke: #d63a4a; }
+[data-phase='aifill'] .seance-star,
+[data-phase='build'] .seance-star,
+[data-phase='deploy'] .seance-star { opacity: 1; stroke: #d63a4a; animation: seance-pulse 1.1s ease-in-out infinite; }
+[data-phase='done'] .seance-star { opacity: 0.5; stroke: #8b5cf6; filter: drop-shadow(0 0 4px #c4b5fd); }
+[data-phase='failed'] .seance-star { opacity: 0.12; }
+
+@keyframes seance-pulse {
+  0%, 100% { filter: drop-shadow(0 0 2px #d63a4a); }
+  50% { filter: drop-shadow(0 0 8px #f5a623); }
+}
+
+/* Runes: a dotted ring that turns while AI whispers. */
+.seance-runes {
+  position: absolute;
+  inset: -6% -4%;
+  border-radius: 50%;
+  border: 2px dotted #c4b5fd;
+  opacity: 0;
+  transition: opacity 0.8s;
+}
+[data-phase='aifill'] .seance-runes,
+[data-phase='build'] .seance-runes,
+[data-phase='deploy'] .seance-runes { opacity: 0.6; animation: seance-spin 6s linear infinite; }
+@keyframes seance-spin { to { transform: rotate(360deg); } }
+
+/* ---------- candles (pixel style, CSS only) ---------- */
+.seance-candle {
+  position: absolute;
+  width: 4%;
+  height: 22%;
+  transform: translate(-50%, -100%);
+  background: linear-gradient(#f1e9ff, #c4b5fd);
+  box-shadow: inset -2px 0 0 #8b5cf6;
+}
+.seance-flame {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 110%;
+  height: 70%;
+  transform: translateX(-50%);
+  background: #f5a623;
+  box-shadow: 0 0 0 1px #ffd36b inset, 0 0 12px 4px rgba(245, 166, 35, 0.55);
+  clip-path: polygon(50% 0, 80% 40%, 100% 75%, 75% 100%, 25% 100%, 0 75%, 20% 40%);
+  animation: seance-flicker 0.42s step-end infinite;
+}
+@keyframes seance-flicker {
+  0% { height: 70%; }
+  33% { height: 86%; }
+  66% { height: 62%; }
+}
+[data-phase='idle'] .seance-flame { height: 40%; opacity: 0.6; animation-duration: 0.9s; }
+[data-phase='fetch'] .seance-flame,
+[data-phase='repair'] .seance-flame { animation-duration: 0.3s; }
+[data-phase='aifill'] .seance-flame,
+[data-phase='build'] .seance-flame,
+[data-phase='deploy'] .seance-flame { animation-duration: 0.18s; background: #ffd36b; }
+[data-phase='failed'] .seance-flame { opacity: 0; transition: opacity 0.6s; }
+
+/* ---------- vampires (sprite sheet: 4 frames of 487x669) ---------- */
+.seance-vampire {
+  position: absolute;
+  aspect-ratio: 487 / 669;
+  background: url('/art/vampire-1-sheet.png') 0 0 / 400% 100% no-repeat;
+  transform: translateX(-50%);
+  z-index: 3;
+  filter: drop-shadow(0 4px 2px rgba(0, 0, 0, 0.6));
+}
+.seance-vampire.is-back { z-index: 1; filter: brightness(0.7) drop-shadow(0 4px 2px rgba(0, 0, 0, 0.6)); }
+.seance-vampire.is-flip { transform: translateX(-50%) scaleX(-1); }
+
+/* Idle and failed: arms down (frame 1). While working: chant loop, faster near the end. */
+[data-phase='lookup'] .seance-vampire,
+[data-phase='fetch'] .seance-vampire,
+[data-phase='repair'] .seance-vampire { animation: seance-chant 1.6s step-end infinite; }
+[data-phase='aifill'] .seance-vampire,
+[data-phase='build'] .seance-vampire,
+[data-phase='deploy'] .seance-vampire { animation: seance-chant 0.9s step-end infinite; }
+/* Done: arms raised (frame 3), facing the CRT. */
+[data-phase='done'] .seance-vampire { background-position: 66.667% 0; }
+
+@keyframes seance-chant {
+  0% { background-position: 0% 0; }
+  25% { background-position: 33.333% 0; }
+  50% { background-position: 66.667% 0; }
+  75% { background-position: 100% 0; }
+}
+
+/* ---------- link cards ---------- */
+.seance-card {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  max-width: 44%;
+  padding: 0.35em 0.6em;
+  border: 2px solid #0b0810;
+  background: #c4b5fd;
+  color: #14101c;
+  font: 700 clamp(9px, 1.6vw, 14px) / 1.2 ui-monospace, 'Courier New', monospace;
+  box-shadow: 3px 3px 0 #0b0810;
+  white-space: nowrap;
+}
+.seance-card-text { overflow: hidden; text-overflow: ellipsis; }
+.seance-card-bar { width: 0.8em; height: 0.8em; background: #9b1c2e; flex: none; }
+.seance-card-404 { color: #9b1c2e; flex: none; }
+
+/* The dead link drifts in from the top left and sinks into the circle. */
+.seance-dead { left: 4%; top: 8%; animation: seance-drift 2.4s ease-in-out infinite alternate; }
+[data-phase='fetch'] .seance-dead,
+[data-phase='repair'] .seance-dead { animation: seance-sink 1.6s ease-in forwards; }
+[data-phase='aifill'] .seance-dead,
+[data-phase='build'] .seance-dead,
+[data-phase='deploy'] .seance-dead,
+[data-phase='done'] .seance-dead { opacity: 0; }
+[data-phase='failed'] .seance-dead { animation: none; filter: grayscale(1); opacity: 0.7; }
+@keyframes seance-drift { to { transform: translate(6%, 18%) rotate(-3deg); } }
+@keyframes seance-sink {
+  from { left: 4%; top: 8%; opacity: 1; transform: none; }
+  to { left: 42%; top: 70%; opacity: 0; transform: scale(0.3) rotate(20deg); }
+}
+
+/* ---------- the CRT portal (screen of the computer in room.png) ---------- */
+.seance-crt {
+  position: absolute;
+  left: 90.4%;
+  top: 37.6%;
+  width: 5.6%;
+  height: 8.6%;
+  border-radius: 18%;
+  background: #8b5cf6;
+  opacity: 0;
+  mix-blend-mode: screen;
+  z-index: 2;
+}
+[data-phase='build'] .seance-crt,
+[data-phase='deploy'] .seance-crt { opacity: 0.5; animation: seance-crt 0.25s step-end infinite; }
+[data-phase='done'] .seance-crt { opacity: 0.9; background: #c4b5fd; box-shadow: 0 0 24px 10px rgba(196, 181, 253, 0.6); }
+@keyframes seance-crt { 50% { opacity: 0.15; } }
+
+/* The new link rises out of the screen. */
+.seance-new { right: 3%; top: 28%; background: #f1e9ff; animation: seance-rise 0.9s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.seance-new .seance-card-bar { background: #8b5cf6; }
+@keyframes seance-rise {
+  from { transform: translateY(60%) scale(0.2); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* One flash when the spirit crosses over. */
+.seance-flash { position: absolute; inset: 0; background: #f1e9ff; opacity: 0; pointer-events: none; z-index: 5; }
+[data-phase='done'] .seance-flash { animation: seance-flash 0.7s ease-out 1; }
+@keyframes seance-flash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+
+/* ---------- controls and motion settings ---------- */
+.seance-pause {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 6;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+.seance[data-paused] *,
+.seance[data-paused] *::after { animation-play-state: paused !important; }
+
+/* Reduced motion: same scene, no movement. Phase still shows through light and pose. */
+@media (prefers-reduced-motion: reduce) {
+  .seance * { animation: none !important; transition: none !important; }
+  .seance-pause { display: none; }
+  [data-phase='fetch'] .seance-dead,
+  [data-phase='repair'] .seance-dead { opacity: 0; }
+  [data-phase='lookup'] .seance-vampire,
+  [data-phase='fetch'] .seance-vampire,
+  [data-phase='repair'] .seance-vampire,
+  [data-phase='aifill'] .seance-vampire,
+  [data-phase='build'] .seance-vampire,
+  [data-phase='deploy'] .seance-vampire { background-position: 33.333% 0; }
+}

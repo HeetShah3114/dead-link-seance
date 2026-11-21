@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiError, JobView } from '@seance/shared';
 import { ApiCallError, getJob, startSummons } from './api';
 import { describeStep } from './labels';
+import { Seance, type ScenePhase } from './seance/Seance';
+import { scenePhase } from './seance/phase';
 
 const POLL_MS = 1500;
 
@@ -11,6 +13,15 @@ type Phase =
   | { kind: 'running'; jobId: string; job: JobView | null }
   | { kind: 'done'; job: JobView }
   | { kind: 'failed'; error: ApiError; job?: JobView };
+
+const PHASES: ScenePhase[] = ['idle', 'lookup', 'fetch', 'repair', 'aifill', 'build', 'deploy', 'done', 'failed'];
+
+/** Dev only: ?scene=<phase> freezes the scene in one phase, for design review. Never in production builds. */
+const previewPhase: ScenePhase | null = (() => {
+  if (!import.meta.env.DEV) return null;
+  const p = new URLSearchParams(window.location.search).get('scene');
+  return PHASES.includes(p as ScenePhase) ? (p as ScenePhase) : null;
+})();
 
 export function App() {
   const [url, setUrl] = useState('');
@@ -61,8 +72,11 @@ export function App() {
 
   return (
     <main>
-      <h1>Dead Link Séance</h1>
+      <h1 className="logo">
+        <img src="/art/logo.png" alt="Dead Link Séance" width="2172" height="724" />
+      </h1>
       <p>Paste the address of a dead website. We will ask the Internet Archive for its last saved copy and rebuild it.</p>
+      <p className="hint">Works best with one person&rsquo;s page, like a GeoCities or Angelfire home page, not a whole directory.</p>
 
       <form onSubmit={onSubmit}>
         <label htmlFor="url">Address of the dead site</label>
@@ -80,8 +94,18 @@ export function App() {
         </button>
       </form>
 
+      {previewPhase ? (
+        <Seance phase={previewPhase} deadUrl="http://www.geocities.com/Hollywood/Hills/2000/" newUrl="https://dead-link-seance-sites.whoisheet.workers.dev/sites/abc123def456/" />
+      ) : (
+        <Seance
+          phase={scenePhase({ starting: phase.kind === 'starting', job, failed: phase.kind === 'failed' })}
+          {...(phase.kind !== 'idle' && url ? { deadUrl: url } : {})}
+          {...(phase.kind === 'done' && phase.job.result ? { newUrl: phase.job.result.siteUrl } : {})}
+        />
+      )}
+
       {job && (
-        <ol aria-label="Progress">
+        <ol aria-label="Progress" aria-live="polite">
           {job.steps.map((s) => {
             const d = describeStep(s);
             return (
