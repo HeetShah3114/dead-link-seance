@@ -14,6 +14,24 @@ export function sameSite(a: URL, b: URL): boolean {
   return bareHost(a) === bareHost(b);
 }
 
+/** Folder of the start page, e.g. "/Hollywood/Hills/1234/" for ".../1234/index.html". */
+export function scopePrefix(start: URL): string {
+  const p = start.pathname;
+  return p.endsWith('/') ? p : p.slice(0, p.lastIndexOf('/') + 1) || '/';
+}
+
+/**
+ * Inside the resurrected site: same host AND under the start page's folder.
+ * On shared hosts (GeoCities, Angelfire, Tripod) a "site" is a folder, and other
+ * folders on the same host are other people's sites. Those count as off-site.
+ */
+export function inScope(u: URL, start: URL): boolean {
+  if (!sameSite(u, start)) return false;
+  const prefix = scopePrefix(start).toLowerCase();
+  const p = u.pathname.toLowerCase();
+  return p.startsWith(prefix) || `${p}/` === prefix;
+}
+
 /**
  * Identity of a page: bare host + path + query, no fragment, no scheme.
  * "/dir/" and "/dir/index.html" are the same page.

@@ -4,7 +4,7 @@ import type { WaybackClient } from '../wayback/client.js';
 import type { DiskCache } from '../wayback/cache.js';
 import { fetchRaw } from '../wayback/fetch-page.js';
 import { decodeHtml } from '../pipeline/decode.js';
-import { LOGIN_OR_PAYMENT, NON_PAGE_EXT, pageKey, pagePath, resolveUrl, sameSite } from '../site/paths.js';
+import { LOGIN_OR_PAYMENT, NON_PAGE_EXT, inScope, pageKey, pagePath, resolveUrl } from '../site/paths.js';
 
 export interface CrawledPage {
   url: URL;
@@ -59,7 +59,7 @@ export function pageLinks(html: string, pageUrl: string, start: URL): URL[] {
   $('a[href], area[href], frame[src], iframe[src]').each((_, el) => {
     const raw = $(el).attr('href') ?? $(el).attr('src') ?? '';
     const u = resolveUrl(raw, pageUrl);
-    if (!u || !sameSite(u, start) || NON_PAGE_EXT.test(u.pathname)) return;
+    if (!u || !inScope(u, start) || NON_PAGE_EXT.test(u.pathname)) return;
     u.hash = '';
     out.push(u);
   });

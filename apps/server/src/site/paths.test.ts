@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pageKey, pagePath, relPath, unwrapArchive, resolveUrl, sameSite, assetPath, LOGIN_OR_PAYMENT } from './paths.js';
+import { pageKey, pagePath, relPath, unwrapArchive, resolveUrl, sameSite, assetPath, inScope, scopePrefix, LOGIN_OR_PAYMENT } from './paths.js';
 
 const u = (s: string) => new URL(s);
 
@@ -9,6 +9,16 @@ describe('site paths', () => {
     expect(pageKey(u('http://a.com/x.html?y=1#top'))).toBe('a.com/x.html?y=1');
     expect(sameSite(u('http://www.a.com/'), u('http://a.com:80/x'))).toBe(true);
     expect(sameSite(u('http://a.com/'), u('http://b.com/'))).toBe(false);
+  });
+
+  it('scopes a site to the start page folder, so shared hosts stay one person deep', () => {
+    const start = u('http://www.geocities.com/Hollywood/Hills/1234/');
+    expect(inScope(u('http://geocities.com/Hollywood/Hills/1234/ep/x.html'), start)).toBe(true);
+    expect(inScope(u('http://www.geocities.com/Hollywood/Hills/1234'), start)).toBe(true);
+    expect(inScope(u('http://www.geocities.com/Hollywood/Hills/5678/'), start)).toBe(false);
+    expect(inScope(u('http://www.geocities.com/~stacy/login.html'), start)).toBe(false);
+    expect(inScope(u('http://a.com/anything'), u('http://www.a.com/'))).toBe(true);
+    expect(scopePrefix(u('http://a.com/dir/page.html'))).toBe('/dir/');
   });
 
   it('gives the start page index.html and others stable files in p/', () => {

@@ -1,7 +1,7 @@
 // Page repair (tasks 1.3 and 2.2, R5): strip code, switch off forms, rewrite links and assets.
 import * as cheerio from 'cheerio';
 import { rawUrl, viewUrl } from '../wayback/snapshot.js';
-import { relPath, resolveUrl, sameSite } from '../site/paths.js';
+import { inScope, relPath, resolveUrl } from '../site/paths.js';
 
 /** Where a same-site page link should point. */
 export type PageTarget = { kind: 'page'; path: string } | { kind: 'lost' };
@@ -117,7 +117,7 @@ export function repairPage(html: string, o: RepairOptions): RepairResult {
       a.removeAttr('href').attr('data-seance-link', 'dead-scheme');
       return;
     }
-    if (!sameSite(u, site)) {
+    if (!inScope(u, site)) {
       a.attr('href', viewUrl(o.timestamp, u.href)).attr('data-seance-link', 'offsite').attr('rel', 'noopener noreferrer');
       return;
     }
