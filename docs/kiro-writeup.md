@@ -40,3 +40,7 @@ Running notes. Update at the end of each work day. Turned into the final write-u
     intended. Fixed (data: only in img src) and pinned with a regression test.
   - Property test on the fact checker: a kept caption never holds a number or capitalized word missing
     from the source.
+- Task 3.7, real AI eval on 5 GeoCities sites (`docs/ai-eval.md`): two eval rounds found 6 problems
+  (an invented "heart shaped" detail, empty captions, a dodgeable count check, junk names). All fixed with
+  regression tests; final run had no invented facts. Honest finding: captions add little on 1999-era pages
+  (no alt text), the fact-checked "what was lost" note is the useful AI part.
