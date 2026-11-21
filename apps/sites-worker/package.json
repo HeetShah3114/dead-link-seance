@@ -8,8 +8,8 @@
     "deploy:check": "cf deploy --dry-run"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "2.0.0-beta.sha-805ec1ff3",
-    "cf": "0.15.0",
+    "@cloudflare/vite-plugin": "2.0.0-rc.3",
+    "cf": "1.0.0-rc.2",
     "vite": "^8.0.0"
   }
 }
