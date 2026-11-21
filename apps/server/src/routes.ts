@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { JobView, SummonRequest, SummonResponse } from '@seance/shared';
 import { mimeFor } from './mime.js';
+import { checkTargetUrl } from './safety/url-guard.js';
 import { apiError } from './jobs/errors.js';
 import type { JobRunner } from './jobs/runner.js';
 import type { JobRow, JobStore } from './jobs/store.js';
@@ -27,27 +28,19 @@ export function toView(j: JobRow): JobView {
   };
 }
 
-function validUrl(v: unknown): v is string {
-  if (typeof v !== 'string' || v.length === 0 || v.length > 2048) return false;
-  try {
-    const u = new URL(v);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 export function registerRoutes(app: FastifyInstance, ctx: RouteContext): void {
   app.get('/health', async () => ({ ok: true }));
 
   app.post('/api/summons', async (req, reply) => {
     const body = (req.body ?? {}) as Partial<SummonRequest>;
-    if (!validUrl(body.url)) {
+    // Refused before any job exists or any external call is made. (R1.2, R11.2)
+    const guard = checkTargetUrl(body.url);
+    if (!guard.ok) {
       return reply.code(400).send({ error: apiError('INVALID_URL') });
     }
     // Client identity is hashed so raw IPs are never stored. (design 7)
     const clientHash = createHash('sha256').update(req.ip).digest('hex').slice(0, 16);
-    const job = ctx.store.create(body.url, clientHash);
+    const job = ctx.store.create(guard.url.href, clientHash);
     ctx.runner.enqueue(job.id);
     const res: SummonResponse = { jobId: job.id };
     return reply.code(202).send(res);

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WaybackClient, WaybackError } from './client.js';
+import { OutboundBlockedError } from '../safety/url-guard.js';
 
 const UA = 'DeadLinkSeance/0.1 (+https://github.com/HeetShah3114/dead-link-seance)';
 const header = ['timestamp', 'original', 'mimetype', 'statuscode'];
@@ -91,6 +92,39 @@ describe('WaybackClient', () => {
       new Response('', { status: 429 }),
     ]);
     await expect(client.findBestSnapshot('http://a.com/')).rejects.toMatchObject({ code: 'ARCHIVE_RATE_LIMITED' });
+  });
+
+  it('follows a redirect that stays on the archive', async () => {
+    const { client, calls } = make([
+      new Response(null, { status: 302, headers: { location: '/web/20050101000000id_/http://a.com/' } }),
+      new Response('<html>ok</html>', { status: 200 }),
+    ]);
+    const res = await client.get('https://web.archive.org/web/2005id_/http://a.com/');
+    expect(res.status).toBe(200);
+    expect(calls.map((c) => c.url)).toEqual([
+      'https://web.archive.org/web/2005id_/http://a.com/',
+      'https://web.archive.org/web/20050101000000id_/http://a.com/',
+    ]);
+  });
+
+  it('refuses a redirect that leaves the archive, without sending it', async () => {
+    const { client, calls } = make([
+      new Response(null, { status: 301, headers: { location: 'http://169.254.169.254/latest/meta-data/' } }),
+    ]);
+    await expect(client.get('https://web.archive.org/web/2005id_/http://a.com/')).rejects.toBeInstanceOf(OutboundBlockedError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('refuses a non-archive url outright', async () => {
+    const { client, calls } = make([]);
+    await expect(client.get('http://127.0.0.1:3000/')).rejects.toBeInstanceOf(OutboundBlockedError);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('stops after too many redirects', async () => {
+    const hop = () => new Response(null, { status: 302, headers: { location: 'https://web.archive.org/loop' } });
+    const { client } = make([hop(), hop(), hop(), hop(), hop(), hop(), hop()]);
+    await expect(client.get('https://web.archive.org/loop')).rejects.toMatchObject({ code: 'ARCHIVE_TIMEOUT' });
   });
 
   it('throws ARCHIVE_TIMEOUT after repeated network errors', async () => {

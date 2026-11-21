@@ -43,7 +43,18 @@ async function summon(app: ReturnType<typeof make>['app'], url: unknown) {
 describe('POST /api/summons', () => {
   it('rejects bad input with INVALID_URL', async () => {
     const { app } = make(async () => snap);
-    for (const bad of [undefined, '', 'nonsense', 'ftp://a.com/', 42]) {
+    for (const bad of [
+      undefined,
+      '',
+      'nonsense',
+      'ftp://a.com/',
+      42,
+      'http://localhost:3000/',
+      'http://169.254.169.254/latest/meta-data/',
+      'http://192.168.1.1/',
+      'http://[::1]/',
+      'http://2130706433/',
+    ]) {
       const res = await summon(app, bad);
       expect(res.statusCode).toBe(400);
       expect(res.json().error.code).toBe('INVALID_URL');

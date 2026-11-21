@@ -6,6 +6,7 @@ import { formatDate, viewUrl } from '../wayback/snapshot.js';
 import { repairV0 } from '../repair/repair.js';
 import { buildSiteV0 } from '../build/build.js';
 import { decodeHtml } from './decode.js';
+import { checkTargetUrl } from '../safety/url-guard.js';
 
 export class PipelineError extends Error {
   constructor(
@@ -46,15 +47,10 @@ function slug(url: URL): string {
 
 /** Pipeline v0 (task 1.5): lookup, fetch, repair, build for ONE page. */
 export async function resurrectV0(input: string, deps: ResurrectDeps): Promise<ResurrectResult> {
-  let url: URL;
-  try {
-    url = new URL(input);
-  } catch {
-    throw new PipelineError('INVALID_URL', 'Not a valid URL');
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new PipelineError('INVALID_URL', 'Only http and https URLs can be summoned');
-  }
+  // Checked again here so the CLI and any future caller get the same guard as the API. (R11.2)
+  const guard = checkTargetUrl(input);
+  if (!guard.ok) throw new PipelineError('INVALID_URL', `Target refused: ${guard.reason}`);
+  const url = guard.url;
 
   deps.onStep?.('lookup');
   const snap = await deps.client.findBestSnapshot(url.href);

@@ -1,4 +1,7 @@
 import { CDX_FL, parseCdx, pickBest, type Snapshot } from './snapshot.js';
+import { assertArchiveUrl, OutboundBlockedError } from '../safety/url-guard.js';
+
+const MAX_REDIRECTS = 5;
 
 export type WaybackErrorCode = 'ARCHIVE_TIMEOUT' | 'ARCHIVE_RATE_LIMITED';
 
@@ -65,6 +68,29 @@ export class WaybackClient {
     this.lastStart = this.o.now();
   }
 
+  /**
+   * One request with redirects followed by hand, so every hop is checked against the
+   * archive allow-list before it is sent. (R11.2)
+   */
+  private async fetchChecked(url: string): Promise<Response> {
+    let current = url;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      assertArchiveUrl(current);
+      const res = await this.o.fetchImpl(current, {
+        headers: { 'User-Agent': this.o.userAgent },
+        signal: AbortSignal.timeout(this.o.timeoutMs),
+        redirect: 'manual',
+      });
+      const location = res.headers.get('location');
+      if (res.status >= 300 && res.status < 400 && location) {
+        current = new URL(location, current).href;
+        continue;
+      }
+      return res;
+    }
+    throw new WaybackError('ARCHIVE_TIMEOUT', 'Too many redirects from the archive');
+  }
+
   private async send(url: string): Promise<Response> {
     let lastStatus = 0;
     let timedOut = false;
@@ -72,18 +98,16 @@ export class WaybackClient {
       if (attempt > 0) await this.o.sleep(this.o.backoffBaseMs * 2 ** (attempt - 1));
       await this.paceOnce();
       try {
-        const res = await this.o.fetchImpl(url, {
-          headers: { 'User-Agent': this.o.userAgent },
-          signal: AbortSignal.timeout(this.o.timeoutMs),
-          redirect: 'follow',
-        });
+        const res = await this.fetchChecked(url);
         if (res.status === 429 || res.status >= 500) {
           lastStatus = res.status;
           timedOut = false;
           continue;
         }
         return res;
-      } catch {
+      } catch (e) {
+        // A blocked target is a hard stop, never a retry.
+        if (e instanceof OutboundBlockedError || e instanceof WaybackError) throw e;
         timedOut = true;
       }
     }
