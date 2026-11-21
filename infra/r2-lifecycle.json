@@ -1,0 +1,14 @@
+[
+  {
+    "id": "expire-sites-after-30-days",
+    "enabled": true,
+    "conditions": { "prefix": "sites/" },
+    "deleteObjectsTransition": { "condition": { "type": "Age", "maxAge": 2592000 } }
+  },
+  {
+    "id": "Default Multipart Abort Rule",
+    "enabled": true,
+    "conditions": {},
+    "abortMultipartUploadsTransition": { "condition": { "type": "Age", "maxAge": 604800 } }
+  }
+]
