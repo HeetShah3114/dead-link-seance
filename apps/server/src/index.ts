@@ -14,6 +14,7 @@ import { S3Deployer, type Deployer } from './deploy/s3.js';
 import { DEFAULT_LIMITS, loadLimits, type Limits } from './config.js';
 import { llmFromEnv } from './ai/from-env.js';
 import type { Llm } from './ai/llm.js';
+import { serveWeb } from './web.js';
 
 export interface AppOptions {
   /** SQLite file, or ":memory:". */
@@ -27,6 +28,10 @@ export interface AppOptions {
   examplesFile?: string;
   /** Enables DELETE /api/sites/:siteId. Must be long and random. */
   adminToken?: string;
+  /** Built UI to serve from this server (production). */
+  webDist?: string;
+  /** Behind a host's proxy (Render): read the client IP from X-Forwarded-For, so limits are per user. */
+  trustProxy?: boolean;
   logger?: boolean;
 }
 
@@ -46,7 +51,7 @@ function examplesLoader(file: string): () => Promise<Example[]> {
 }
 
 export function buildApp(opts: AppOptions) {
-  const app = Fastify({ logger: opts.logger ?? true, bodyLimit: 16 * 1024 });
+  const app = Fastify({ logger: opts.logger ?? true, bodyLimit: 16 * 1024, trustProxy: opts.trustProxy ?? false });
   const store = new JobStore(openDb(opts.dbFile));
   const limits = { ...DEFAULT_LIMITS, ...opts.limits };
   const runner = new JobRunner({
@@ -67,6 +72,7 @@ export function buildApp(opts: AppOptions) {
     ...(opts.adminToken ? { adminToken: opts.adminToken } : {}),
     ...(opts.deployer ? { deployer: opts.deployer } : {}),
   });
+  if (opts.webDist) serveWeb(app, opts.webDist);
   return { app, runner, store };
 }
 
@@ -115,6 +121,8 @@ function main() {
     limits,
     examplesFile: process.env.EXAMPLES_FILE ?? 'examples.json',
     ...(adminToken ? { adminToken } : {}),
+    webDist: process.env.WEB_DIST ?? path.resolve('..', 'web', 'dist'),
+    trustProxy: process.env.TRUST_PROXY === '1',
   });
   app.log.info({ ai: llm ? llm.model : 'off', publish: deployer ? 'r2' : 'local' }, 'configured');
   app
