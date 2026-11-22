@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ApiError, JobView } from '@seance/shared';
+import type { ApiError, ErrorCode, JobView } from '@seance/shared';
 import { ApiCallError, getJob, startSummons } from './api';
 import { describeStep } from './labels';
 import { Seance, type ScenePhase } from './seance/Seance';
 import { scenePhase } from './seance/phase';
 import { Reveal } from './reveal/Reveal';
+import { Silence } from './silence/Silence';
+import { HINTS } from './silence/hints';
 
 const POLL_MS = 1500;
 
@@ -22,6 +24,14 @@ const previewPhase: ScenePhase | null = (() => {
   if (!import.meta.env.DEV) return null;
   const p = new URLSearchParams(window.location.search).get('scene');
   return PHASES.includes(p as ScenePhase) ? (p as ScenePhase) : null;
+})();
+
+/** Dev only: ?scene=failed&error=<CODE> shows the silence screen for that code. */
+const previewError: ApiError | null = (() => {
+  if (!import.meta.env.DEV) return null;
+  const code = new URLSearchParams(window.location.search).get('error');
+  if (!code || !(code in HINTS)) return null;
+  return { code: code as ErrorCode, message: `(preview of ${code})`, spooky: HINTS[code as ErrorCode].title };
 })();
 
 /** Dev preview data for ?scene=done: a real published site and its real snapshot. */
@@ -57,6 +67,7 @@ export function App() {
   const [url, setUrl] = useState('');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const timer = useRef<number | undefined>(undefined);
+  const urlRef = useRef<HTMLInputElement>(null);
 
   // Poll the job until it is done or failed.
   useEffect(() => {
@@ -86,8 +97,21 @@ export function App() {
     // Only restart polling when the job id changes, not on every status update.
   }, [phase.kind === 'running' ? phase.jobId : null]);
 
-  async function onSubmit(ev: React.FormEvent) {
+  function onSubmit(ev: React.FormEvent) {
     ev.preventDefault();
+    void summon();
+  }
+
+  function editUrl() {
+    setPhase({ kind: 'idle' });
+    // Wait for the input to be enabled again, then focus and select it.
+    window.setTimeout(() => {
+      urlRef.current?.focus();
+      urlRef.current?.select();
+    }, 0);
+  }
+
+  async function summon() {
     setPhase({ kind: 'starting' });
     try {
       const { jobId } = await startSummons(url.trim());
@@ -111,6 +135,7 @@ export function App() {
       <form onSubmit={onSubmit}>
         <label htmlFor="url">Address of the dead site</label>
         <input
+          ref={urlRef}
           id="url"
           type="url"
           required
@@ -149,11 +174,14 @@ export function App() {
       )}
 
       {phase.kind === 'failed' && (
-        <section role="alert" className="error">
-          <h2>{phase.error.spooky}</h2>
-          <p>{phase.error.message}</p>
-        </section>
+        <Silence
+          error={phase.error}
+          {...(phase.job?.result?.downloadUrl ? { downloadUrl: phase.job.result.downloadUrl } : {})}
+          onRetry={() => void summon()}
+          onEdit={editUrl}
+        />
       )}
+      {previewError && <Silence error={previewError} onRetry={() => undefined} onEdit={() => undefined} />}
 
       {phase.kind === 'done' && phase.job.result && <Reveal job={phase.job} onAgain={() => setPhase({ kind: 'idle' })} />}
       {previewPhase === 'done' && <Reveal job={PREVIEW_JOB} onAgain={() => undefined} />}

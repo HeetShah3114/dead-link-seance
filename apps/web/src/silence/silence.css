@@ -1,0 +1,14 @@
+.silence {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid #9b1c2e;
+  border-left-width: 6px;
+  border-radius: 8px;
+  background: #1c0f16;
+}
+.silence h2 { margin: 0 0 0.5rem; font-size: 1.5rem; }
+.silence h2:focus { outline: none; }
+.silence-plain { margin: 0 0 0.25rem; font-weight: 600; }
+.silence-next { margin: 0 0 1rem; color: var(--muted); }
+.silence-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.silence-code { margin: 0.75rem 0 0; font: 0.75rem ui-monospace, 'Courier New', monospace; color: var(--muted); }
