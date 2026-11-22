@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { PutObjectCommand, type S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectsCommand, ListObjectsV2Command, PutObjectCommand, type S3Client } from '@aws-sdk/client-s3';
 import { mimeFor } from '../mime.js';
 
 export class DeployError extends Error {
@@ -15,6 +15,8 @@ export interface Deployer {
   deploy(siteId: string, dir: string): Promise<{ url: string }>;
   /** Public URL a site id has once deployed. Used to check a reusable earlier build. */
   urlFor(siteId: string): string;
+  /** Takedown: delete every published file of a site. Returns how many were deleted. (R11.4) */
+  remove(siteId: string): Promise<number>;
 }
 
 export interface S3DeployerOptions {
@@ -67,5 +69,25 @@ export class S3Deployer implements Deployer {
 
   urlFor(siteId: string): string {
     return `${this.o.baseUrl.replace(/\/+$/, '')}/${this.prefix}/${siteId}/`;
+  }
+
+  async remove(siteId: string): Promise<number> {
+    if (!/^[a-z0-9]{12}$/.test(siteId)) throw new DeployError('Invalid site id');
+    // Only ever this one site's folder: the trailing slash stops "abc" matching "abcd...".
+    const Prefix = `${this.prefix}/${siteId}/`;
+    let deleted = 0;
+    let token: string | undefined;
+    do {
+      const page = (await this.o.s3.send(
+        new ListObjectsV2Command({ Bucket: this.o.bucket, Prefix, ...(token ? { ContinuationToken: token } : {}) }),
+      )) as { Contents?: Array<{ Key?: string }>; NextContinuationToken?: string };
+      const keys = (page.Contents ?? []).map((c) => c.Key).filter((k): k is string => !!k && k.startsWith(Prefix));
+      if (keys.length) {
+        await this.o.s3.send(new DeleteObjectsCommand({ Bucket: this.o.bucket, Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true } }));
+        deleted += keys.length;
+      }
+      token = page.NextContinuationToken;
+    } while (token);
+    return deleted;
   }
 }

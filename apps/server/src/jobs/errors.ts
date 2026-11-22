@@ -21,6 +21,7 @@ const TEXT: Record<ErrorCode, { message: string; spooky: string }> = {
   RATE_LIMITED: { message: 'Too many requests. Please wait before summoning again.', spooky: 'The circle needs time to rest.' },
   JOB_ACTIVE: { message: 'You already have a summoning in progress.', spooky: 'One spirit at a time.' },
   DEPLOY_FAILED: { message: 'The site was rebuilt but could not be published.', spooky: 'The spirit could not cross over.' },
+  REMOVED: { message: 'This resurrection was taken down on request.', spooky: 'This spirit has been laid to rest.' },
   INTERNAL: { message: 'Something went wrong on our side.', spooky: 'The ritual faltered.' },
 };
 

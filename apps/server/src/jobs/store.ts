@@ -120,6 +120,13 @@ export class JobStore {
     return null;
   }
 
+  /** Takedown: every job that produced this site now reports it removed, and is never reused. */
+  markRemoved(siteId: string, error: ApiError): number {
+    return this.db
+      .prepare("UPDATE jobs SET status = 'failed', result_json = NULL, error_json = ?, updated_at = ? WHERE site_id = ?")
+      .run(JSON.stringify(error), Date.now(), siteId).changes;
+  }
+
   update(id: string, patch: JobPatch): void {
     const sets: string[] = [];
     const vals: unknown[] = [];

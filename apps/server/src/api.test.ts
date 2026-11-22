@@ -145,6 +145,7 @@ describe('deploy step', () => {
   it('uses the deployer URL and marks the deploy step Published', async () => {
     const calls: Array<{ siteId: string; dir: string }> = [];
     const deployer: Deployer = {
+      remove: async () => 0,
       urlFor: (siteId) => `https://d1.cloudfront.net/sites/${siteId}/`,
       deploy: async (siteId, dir) => {
         calls.push({ siteId, dir });
@@ -162,6 +163,7 @@ describe('deploy step', () => {
 
   it('reports DEPLOY_FAILED without leaking upload details', async () => {
     const deployer: Deployer = {
+      remove: async () => 0,
       urlFor: (siteId) => `https://d1.cloudfront.net/sites/${siteId}/`,
       deploy: async () => {
         throw new DeployError('AccessDenied: arn:aws:iam::123:role/secret');
@@ -243,5 +245,103 @@ describe('reuse (task 2.8)', () => {
     expect(v2.result?.siteUrl).toBe(v1.result?.siteUrl);
     expect(v2.result?.report.reused).toBe(true);
     expect(gets).toBe(after1);
+  });
+});
+
+describe('download, examples and takedown (tasks 4.5, 4.6)', () => {
+  const TOKEN = 'a-very-long-random-admin-token-1234';
+
+  function app2(over: Partial<Parameters<typeof buildApp>[0]> = {}) {
+    return buildApp({
+      dbFile: ':memory:',
+      logger: false,
+      limits: { summonsPerHour: 50 },
+      pipeline: {
+        client: { findBestSnapshot: async () => snap, get: async () => new Response(page, { headers: { 'content-type': 'text/html' } }) },
+        cache: new DiskCache(path.join(dir, 'cache')),
+        outRoot: path.join(dir, 'out'),
+      },
+      ...over,
+    });
+  }
+
+  it('offers a zip of the built site', async () => {
+    const { app, runner } = app2();
+    const { jobId } = (await summon(app, 'http://a.com/')).json();
+    await runner.idle();
+    const view = (await app.inject({ method: 'GET', url: `/api/summons/${jobId}` })).json() as JobView;
+    expect(view.downloadUrl).toBe(`/api/summons/${jobId}/download`);
+    expect(view.result?.downloadUrl).toBe(view.downloadUrl);
+    const zip = await app.inject({ method: 'GET', url: view.downloadUrl! });
+    expect(zip.statusCode).toBe(200);
+    expect(zip.headers['content-type']).toBe('application/zip');
+    expect(zip.headers['content-disposition']).toMatch(/attachment; filename="resurrected-a\.com-20030412101500\.zip"/);
+    expect(zip.rawPayload.subarray(0, 2).toString()).toBe('PK');
+  });
+
+  it('still offers the zip when publishing fails (R10.4)', async () => {
+    const deployer: Deployer = { urlFor: (id) => `https://x/sites/${id}/`, remove: async () => 0, deploy: async () => Promise.reject(new DeployError('nope')) };
+    const { app, runner } = app2({ deployer });
+    const { jobId } = (await summon(app, 'http://a.com/')).json();
+    await runner.idle();
+    const view = (await app.inject({ method: 'GET', url: `/api/summons/${jobId}` })).json() as JobView;
+    expect(view.error?.code).toBe('DEPLOY_FAILED');
+    expect(view.downloadUrl).toBe(`/api/summons/${jobId}/download`);
+    expect((await app.inject({ method: 'GET', url: view.downloadUrl! })).statusCode).toBe(200);
+  });
+
+  it('lists examples from the file, dropping bad entries', async () => {
+    const file = path.join(dir, 'examples.json');
+    const { writeFile } = await import('node:fs/promises');
+    await writeFile(
+      file,
+      JSON.stringify([
+        { url: 'http://a.com/', title: 'A', siteUrl: 'https://x.workers.dev/pinned/abc/', snapshotDate: '1999-01-01' },
+        { url: 'http://b.com/', title: 'B', siteUrl: 'javascript:alert(1)', snapshotDate: '1999-01-01' },
+        'junk',
+      ]),
+    );
+    const { app } = app2({ examplesFile: file });
+    expect((await app.inject({ method: 'GET', url: '/api/examples' })).json()).toEqual([
+      { url: 'http://a.com/', title: 'A', siteUrl: 'https://x.workers.dev/pinned/abc/', snapshotDate: '1999-01-01' },
+    ]);
+    const { app: none } = app2({ examplesFile: path.join(dir, 'missing.json') });
+    expect((await none.inject({ method: 'GET', url: '/api/examples' })).json()).toEqual([]);
+  });
+
+  it('takedown: off without a token, refuses a wrong token, removes everything with the right one', async () => {
+    const removed: string[] = [];
+    const deployer: Deployer = { urlFor: (id) => `https://x/sites/${id}/`, deploy: async (id) => ({ url: `https://x/sites/${id}/` }), remove: async (id) => (removed.push(id), 3) };
+    const { app: off } = app2();
+    expect((await off.inject({ method: 'DELETE', url: '/api/sites/abcdefabcdef' })).statusCode).toBe(404);
+
+    const { app, runner } = app2({ deployer, adminToken: TOKEN });
+    const { jobId } = (await summon(app, 'http://a.com/')).json();
+    await runner.idle();
+    const before = (await app.inject({ method: 'GET', url: `/api/summons/${jobId}` })).json() as JobView;
+    const siteId = before.result!.siteUrl.split('/').at(-2)!;
+
+    expect((await app.inject({ method: 'DELETE', url: `/api/sites/${siteId}` })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'DELETE', url: `/api/sites/${siteId}`, headers: { 'x-admin-token': 'wrong' } })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'DELETE', url: '/api/sites/..%2Fx', headers: { 'x-admin-token': TOKEN } })).statusCode).toBe(400);
+
+    const res = await app.inject({ method: 'DELETE', url: `/api/sites/${siteId}`, headers: { 'x-admin-token': TOKEN } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ siteId, publishedFilesDeleted: 3, jobsUpdated: 1 });
+    expect(removed).toEqual([siteId]);
+
+    const after = (await app.inject({ method: 'GET', url: `/api/summons/${jobId}` })).json() as JobView;
+    expect(after.status).toBe('failed');
+    expect(after.error?.code).toBe('REMOVED');
+    expect(after.result).toBeNull();
+    expect(after.downloadUrl).toBeNull();
+    expect((await app.inject({ method: 'GET', url: `/api/summons/${jobId}/download` })).statusCode).toBe(404);
+
+    // a new summons of the same url must not reuse the removed site
+    const again = (await summon(app, 'http://a.com/')).json().jobId;
+    await runner.idle();
+    const v = (await app.inject({ method: 'GET', url: `/api/summons/${again}` })).json() as JobView;
+    expect(v.status).toBe('done');
+    expect(v.result?.siteUrl).not.toContain(siteId);
   });
 });

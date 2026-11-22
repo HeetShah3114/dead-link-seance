@@ -1,5 +1,7 @@
 import path from 'node:path';
 import { mkdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import type { Example } from '@seance/shared';
 import Fastify from 'fastify';
 import { WaybackClient } from './wayback/client.js';
 import { DiskCache } from './wayback/cache.js';
@@ -21,7 +23,26 @@ export interface AppOptions {
   deployer?: Deployer;
   llm?: Llm;
   limits?: Partial<Limits>;
+  /** JSON list of pre-summoned demo sites (written by scripts/pin-examples.ts). */
+  examplesFile?: string;
+  /** Enables DELETE /api/sites/:siteId. Must be long and random. */
+  adminToken?: string;
   logger?: boolean;
+}
+
+/** Reads the examples file on each request (it is tiny), so re-pinning needs no restart. */
+function examplesLoader(file: string): () => Promise<Example[]> {
+  return async () => {
+    try {
+      const list = JSON.parse(await readFile(file, 'utf8')) as unknown;
+      if (!Array.isArray(list)) return [];
+      return list
+        .filter((e): e is Example => !!e && typeof e.url === 'string' && typeof e.title === 'string' && typeof e.siteUrl === 'string' && /^https:\/\//.test(e.siteUrl))
+        .slice(0, 12);
+    } catch {
+      return [];
+    }
+  };
 }
 
 export function buildApp(opts: AppOptions) {
@@ -37,7 +58,15 @@ export function buildApp(opts: AppOptions) {
     ...(opts.llm ? { llm: opts.llm } : {}),
     log: (msg, extra) => app.log.warn(extra ?? {}, msg),
   });
-  registerRoutes(app, { store, runner, outRoot: opts.pipeline.outRoot, summonsPerHour: limits.summonsPerHour });
+  registerRoutes(app, {
+    store,
+    runner,
+    outRoot: opts.pipeline.outRoot,
+    summonsPerHour: limits.summonsPerHour,
+    ...(opts.examplesFile ? { examples: examplesLoader(opts.examplesFile) } : {}),
+    ...(opts.adminToken ? { adminToken: opts.adminToken } : {}),
+    ...(opts.deployer ? { deployer: opts.deployer } : {}),
+  });
   return { app, runner, store };
 }
 
@@ -53,6 +82,9 @@ function main() {
   mkdirSync(dataDir, { recursive: true });
   const limits = loadLimits();
   const llm = llmFromEnv(dataDir, limits.aiCallsPerDay);
+  // A short token is worse than none: refuse it rather than run with weak takedown auth.
+  const adminToken = process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN.length >= 24 ? process.env.ADMIN_TOKEN : undefined;
+  if (process.env.ADMIN_TOKEN && !adminToken) console.warn('ADMIN_TOKEN is shorter than 24 characters: takedown route disabled.');
   // Publishing is on only when both are set. Credentials come from the standard AWS chain (AWS_PROFILE etc.).
   const deployer: Deployer | undefined =
     process.env.DEPLOY_BUCKET && process.env.DEPLOY_BASE_URL
@@ -81,6 +113,8 @@ function main() {
     ...(deployer ? { deployer } : {}),
     ...(llm ? { llm } : {}),
     limits,
+    examplesFile: process.env.EXAMPLES_FILE ?? 'examples.json',
+    ...(adminToken ? { adminToken } : {}),
   });
   app.log.info({ ai: llm ? llm.model : 'off', publish: deployer ? 'r2' : 'local' }, 'configured');
   app

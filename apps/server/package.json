@@ -16,6 +16,7 @@
     "better-sqlite3": "^13.2.0",
     "cheerio": "^1.2.0",
     "fastify": "^4.28.0",
+    "fflate": "^0.8.3",
     "sanitize-html": "^2.18.2"
   },
   "devDependencies": {

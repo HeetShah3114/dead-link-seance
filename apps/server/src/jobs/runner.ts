@@ -101,6 +101,8 @@ export class JobRunner {
 
       const siteId = newSiteId();
       const r = await rebuild(loc, { ...pipeline, outDirName: siteId, limits: this.limits, onStep, ...(this.o.llm ? { llm: this.o.llm } : {}) });
+      // Saved before publishing, so the zip download works even if publishing fails. (R10.4)
+      store.update(jobId, { siteId });
       let siteUrl = this.siteUrlFor(siteId);
       let deployDetail = 'Served from this server';
       if (this.o.deployer) {

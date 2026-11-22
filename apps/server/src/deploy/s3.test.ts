@@ -56,3 +56,34 @@ describe('S3Deployer', () => {
     await expect(d.deploy('abcdefabcdef', dir)).rejects.toBeInstanceOf(DeployError);
   });
 });
+
+describe('S3Deployer.remove (takedown)', () => {
+  it('deletes only keys under sites/<id>/, across pages', async () => {
+    const sent: Array<{ name: string; input: Record<string, unknown> }> = [];
+    let listCalls = 0;
+    const s3 = {
+      send: async (cmd: { constructor: { name: string }; input: Record<string, unknown> }) => {
+        sent.push({ name: cmd.constructor.name, input: cmd.input });
+        if (cmd.constructor.name === 'ListObjectsV2Command') {
+          listCalls++;
+          return listCalls === 1
+            ? { Contents: [{ Key: 'sites/abcdefabcdef/index.html' }, { Key: 'sites/abcdefabcdefX/evil' }], NextContinuationToken: 't' }
+            : { Contents: [{ Key: 'sites/abcdefabcdef/a/1.gif' }] };
+        }
+        return {};
+      },
+    };
+    const d = new S3Deployer({ bucket: 'b', baseUrl: 'https://x', s3: s3 as never });
+    expect(await d.remove('abcdefabcdef')).toBe(2);
+    expect(sent.filter((s) => s.name === 'ListObjectsV2Command').every((s) => s.input.Prefix === 'sites/abcdefabcdef/')).toBe(true);
+    const deleted = sent
+      .filter((s) => s.name === 'DeleteObjectsCommand')
+      .flatMap((s) => (s.input.Delete as { Objects: Array<{ Key: string }> }).Objects.map((o) => o.Key));
+    expect(deleted).toEqual(['sites/abcdefabcdef/index.html', 'sites/abcdefabcdef/a/1.gif']);
+  });
+
+  it('refuses a bad id before calling S3', async () => {
+    const s3 = { send: async () => ({}) };
+    await expect(new S3Deployer({ bucket: 'b', baseUrl: 'https://x', s3: s3 as never }).remove('../x')).rejects.toBeInstanceOf(DeployError);
+  });
+});

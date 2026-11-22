@@ -13,6 +13,7 @@ export type ErrorCode =
   | 'RATE_LIMITED'
   | 'JOB_ACTIVE'
   | 'DEPLOY_FAILED'
+  | 'REMOVED'
   | 'INTERNAL';
 
 export interface ApiError {
@@ -77,4 +78,16 @@ export interface JobView {
   snapshot: SnapshotInfo | null;
   result: JobResult | null;
   error: ApiError | null;
+  /** Zip of the built site, when one exists. Set even if publishing failed. (R10.4) */
+  downloadUrl?: string | null;
+}
+
+/** A pre-summoned demo site for the home page. (GET /api/examples) */
+export interface Example {
+  url: string;
+  title: string;
+  siteUrl: string;
+  snapshotDate: string;
+  /** One-line teaser, e.g. "1999 Hollywood fan neighborhood". */
+  blurb?: string;
 }
