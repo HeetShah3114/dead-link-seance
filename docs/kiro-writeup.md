@@ -7,7 +7,7 @@ Draft for the Devpost write-up (task 5.5). Lines marked **TODO** need our own wo
 | | |
 |---|---|
 | Build time so far | 5 days (2026-11-18 to 2026-11-22) |
-| Commits | 64, one per task step |
+| Commits | 65+, one per task step |
 | Spec tasks done | 37 of 43 |
 | Tests | 160 (unit, property-based, golden end-to-end) |
 | Requirements changed by what we learned | 5 (R2.5, R3.2, R5.7, R6.1, R11.2) |
