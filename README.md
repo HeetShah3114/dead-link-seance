@@ -6,7 +6,7 @@ shareable copy. Then you see the broken archive snapshot beside the resurrected 
 
 Kiroween 2026, **Resurrection** category: bringing the 1990s personal web back to life.
 
-- Live app: _TBD (task 5.2)_
+- Live app: [dead-link-seance.onrender.com](https://dead-link-seance.onrender.com/)
 - Demo video: _TBD_
 - Resurrected examples (live now):
   - [A Hollywood Hills home page](https://dead-link-seance-sites.whoisheet.workers.dev/pinned/demohills200/) from `http://www.geocities.com/Hollywood/Hills/2000/` (2001)
@@ -61,6 +61,7 @@ npm run build
 | `apps/server` | API, pipeline, Wayback client, repair, sanitizer, AI, deploy |
 | `apps/web` | Séance UI (React + Vite), pixel art in `public/art` |
 | `apps/sites-worker` | Cloudflare Worker that serves resurrected sites from R2 |
+| `apps/keepalive-worker` | Cron Worker that pings the Render app every 10 minutes so the free plan never sleeps |
 | `packages/shared` | API types shared by server and UI |
 | `infra/` | R2 lifecycle rule; unused CloudFront fallback template |
 | `.kiro/` | Specs, steering and hooks used to build this with Kiro |

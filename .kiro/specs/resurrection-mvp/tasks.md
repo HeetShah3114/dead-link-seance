@@ -52,9 +52,9 @@ Days assume ~2.5 weeks.
 
 ## Phase 5: Ship (Days 15 to 18)
 - [x] 5.1 Pick and pre-cache 3 to 5 example sites that resurrect well. Pin them (no expiry). [Decision 2] (3 GeoCities sites under R2 pinned/, `apps/server/scripts/pin-examples.ts`.)
-- [ ] 5.2 [A] Deploy the app container to the host. Set secrets in env. Retention job for 30-day expiry. [R8.4]
+- [x] 5.2 [A] Deploy the app to the host. Set secrets in env. Retention job for 30-day expiry. [R8.4] (Render free web service from `render.yaml`, kept awake by `apps/keepalive-worker`; 30-day expiry is the R2 lifecycle rule.)
 - [ ] 5.3 Full pass on the live URL: all error paths (no snapshot, timeout, bad URL). [R10]
-- [ ] 5.4 README: live URL, setup, 3 example URLs. Confirm license shows in GitHub About. [R12.5, R12.1] PARTLY DONE: README written; live app URL and video link still TBD.
+- [ ] 5.4 README: live URL, setup, 3 example URLs. Confirm license shows in GitHub About. [R12.5, R12.1] PARTLY DONE: README written with the live app URL; video link still TBD.
 - [ ] 5.5 Finish `docs/kiro-writeup.md`: IDE/CLI/Crew use, hooks, specs vs vibe coding, steering, PBT, MCP/powers. [R12.7]
 - [ ] 5.6 Record the demo (3 min max): bad snapshot, séance, reveal, share link, then `.kiro` tour. Upload public to YouTube. [R12.6]
 - [ ] 5.7 Submit on Devpost: category Resurrection, repo URL, live URL, video, write-up. Check `.kiro` is committed.
