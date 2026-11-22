@@ -4,6 +4,7 @@ import { ApiCallError, getJob, startSummons } from './api';
 import { describeStep } from './labels';
 import { Seance, type ScenePhase } from './seance/Seance';
 import { scenePhase } from './seance/phase';
+import { Reveal } from './reveal/Reveal';
 
 const POLL_MS = 1500;
 
@@ -22,6 +23,35 @@ const previewPhase: ScenePhase | null = (() => {
   const p = new URLSearchParams(window.location.search).get('scene');
   return PHASES.includes(p as ScenePhase) ? (p as ScenePhase) : null;
 })();
+
+/** Dev preview data for ?scene=done: a real published site and its real snapshot. */
+const PREVIEW_JOB: JobView = {
+  jobId: 'j_preview',
+  status: 'done',
+  step: 'deploy',
+  steps: [],
+  snapshot: { timestamp: '19990220012606', date: '1999-02-20', archiveUrl: '' },
+  result: {
+    siteUrl: 'https://dead-link-seance-sites.whoisheet.workers.dev/sites/gcveibncf3i0/',
+    beforeUrl: 'https://web.archive.org/web/19990220012606/http://www.geocities.com:80/Hollywood/Hills/',
+    downloadUrl: '',
+    lostNote:
+      'In the shadows of the past, 1 of 1 page and 17 of 18 images and files were resurrected from the 1999-02-20 snapshot, but whispers of "Lovers Lane" remain forever lost.',
+    lostNoteIsAi: true,
+    report: {
+      pagesFound: 1,
+      pagesRecovered: 1,
+      assetsFound: 18,
+      assetsRecovered: 17,
+      aiRestoredItems: 0,
+      aiSkipped: true,
+      formsDisabled: 2,
+      lostPages: [],
+      lostAssets: ['http://pic.geocities.com/images/neighborhoods/ll_buttonm.gif'],
+    },
+  },
+  error: null,
+};
 
 export function App() {
   const [url, setUrl] = useState('');
@@ -125,25 +155,8 @@ export function App() {
         </section>
       )}
 
-      {phase.kind === 'done' && phase.job.result && (
-        <section className="result">
-          <h2>It lives</h2>
-          <p>
-            Rebuilt from the {phase.job.snapshot?.date} snapshot.{' '}
-            <a href={phase.job.result.siteUrl} target="_blank" rel="noreferrer">
-              Open the resurrected site
-            </a>
-          </p>
-          <p>
-            <a href={phase.job.result.beforeUrl} target="_blank" rel="noreferrer">
-              See the original archive snapshot
-            </a>
-          </p>
-          <p>
-            Found {phase.job.result.report.assetsFound} images and files. Page links, asset checks and AI repairs are not built yet.
-          </p>
-        </section>
-      )}
+      {phase.kind === 'done' && phase.job.result && <Reveal job={phase.job} onAgain={() => setPhase({ kind: 'idle' })} />}
+      {previewPhase === 'done' && <Reveal job={PREVIEW_JOB} onAgain={() => undefined} />}
     </main>
   );
 }
