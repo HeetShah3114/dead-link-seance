@@ -46,7 +46,7 @@ Days assume ~2.5 weeks.
 - [x] 4.1 [B] Spooky theme, readable (contrast AA, reduced motion), mobile layout. Follow `tone.md`. [R9.5, R9.6]
 - [x] 4.2 [B] Themed progress lines mapped to the steps. [R9.1]
 - [x] 4.3 [B] Reveal screen: before/after iframes, share link with copy button, report, lost note. [R9.3, R9.4]
-- [ ] 4.4 [B] Silence screen for each error code, in-theme plus a plain line. [R10]
+- [x] 4.4 [B] Silence screen for each error code, in-theme plus a plain line. [R10]
 - [ ] 4.5 [A] `GET /api/examples` and an examples row on the home page. [API]
 - [ ] 4.6 [A] Download zip and takedown route (admin token) with contact line on each page. [R10.4, R11.4]
 
