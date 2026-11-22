@@ -32,16 +32,17 @@ export function keyFor(pathname: string): string | null {
   } catch {
     return null;
   }
-  const m = /^\/sites\/([^/]+)(\/.*)?$/.exec(path);
+  // sites/ expire after 30 days (R2 lifecycle); pinned/ holds demo sites that never expire.
+  const m = /^\/(sites|pinned)\/([^/]+)(\/.*)?$/.exec(path);
   if (!m) return null;
-  const [, siteId, restRaw] = m;
+  const [, prefix, siteId, restRaw] = m;
   if (!siteId || !SITE_ID.test(siteId)) return null;
   let rest = restRaw ?? '/';
   if (rest.endsWith('/')) rest += 'index.html';
   const parts = rest.split('/').filter(Boolean);
   // No dot segments, no backslashes, no empty names: keys stay inside sites/<id>/.
   if (parts.some((p) => p === '.' || p === '..' || p.includes('\\'))) return null;
-  return `sites/${siteId}/${parts.join('/')}`;
+  return `${prefix}/${siteId}/${parts.join('/')}`;
 }
 
 function notFound(): Response {
@@ -58,7 +59,7 @@ export async function handle(request: Request, bucket: SiteBucket): Promise<Resp
   const url = new URL(request.url);
 
   // /sites/<id> without a trailing slash: redirect so relative links resolve.
-  if (/^\/sites\/[a-z0-9]{12}$/.test(url.pathname)) {
+  if (/^\/(sites|pinned)\/[a-z0-9]{12}$/.test(url.pathname)) {
     return new Response(null, { status: 301, headers: { location: `${url.pathname}/`, ...SECURITY_HEADERS } });
   }
 

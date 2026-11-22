@@ -28,6 +28,10 @@ describe('keyFor', () => {
     expect(keyFor(`/sites/${ID}/`)).toBe(`sites/${ID}/index.html`);
     expect(keyFor(`/sites/${ID}/a/`)).toBe(`sites/${ID}/a/index.html`);
   });
+  it('serves pinned demo sites from pinned/', () => {
+    expect(keyFor(`/pinned/${ID}/`)).toBe(`pinned/${ID}/index.html`);
+    expect(keyFor(`/other/${ID}/`)).toBeNull();
+  });
   it('maps files directly', () => {
     expect(keyFor(`/sites/${ID}/img/a.gif`)).toBe(`sites/${ID}/img/a.gif`);
   });
