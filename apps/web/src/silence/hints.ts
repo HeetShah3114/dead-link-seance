@@ -61,6 +61,12 @@ export const HINTS: Record<ErrorCode, Hint> = {
     retry: true,
     editUrl: false,
   },
+  REMOVED: {
+    title: 'This spirit has been laid to rest',
+    next: 'This resurrection was taken down on request, so its link no longer works.',
+    retry: false,
+    editUrl: false,
+  },
   INTERNAL: {
     title: 'The ritual faltered',
     next: 'Something broke on our side. Try again; if it keeps happening, report it.',

@@ -53,6 +53,11 @@ export function Reveal({ job, onAgain }: Props) {
           <a className="button-link" href={shareUrl} target="_blank" rel="noreferrer">
             Open site
           </a>
+          {job.downloadUrl && (
+            <a className="button-link" href={job.downloadUrl}>
+              Download zip
+            </a>
+          )}
         </div>
         <p className="reveal-status" role="status">
           {copied === 'done' ? 'Link copied.' : copied === 'failed' ? 'Could not copy. The link is selected: press Ctrl+C.' : ''}

@@ -7,6 +7,7 @@ import { scenePhase } from './seance/phase';
 import { Reveal } from './reveal/Reveal';
 import { Silence } from './silence/Silence';
 import { HINTS } from './silence/hints';
+import { Examples } from './examples/Examples';
 
 const POLL_MS = 1500;
 
@@ -149,6 +150,16 @@ export function App() {
         </button>
       </form>
 
+      {phase.kind === 'idle' && !previewPhase && (
+        <Examples
+          disabled={busy}
+          onPick={(u) => {
+            setUrl(u);
+            urlRef.current?.focus();
+          }}
+        />
+      )}
+
       {previewPhase ? (
         <Seance phase={previewPhase} deadUrl="http://www.geocities.com/Hollywood/Hills/2000/" newUrl="https://dead-link-seance-sites.whoisheet.workers.dev/sites/abc123def456/" />
       ) : (
@@ -176,7 +187,7 @@ export function App() {
       {phase.kind === 'failed' && (
         <Silence
           error={phase.error}
-          {...(phase.job?.result?.downloadUrl ? { downloadUrl: phase.job.result.downloadUrl } : {})}
+          {...(phase.job?.downloadUrl ? { downloadUrl: phase.job.downloadUrl } : {})}
           onRetry={() => void summon()}
           onEdit={editUrl}
         />
